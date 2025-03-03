@@ -7,6 +7,7 @@ from PIL import Image
 from lavis.models import load_model_and_preprocess
 import torch
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
+import cv2  # For color space conversion
 
 class Platform(Enum):
     ANDROID = "android"
@@ -205,9 +206,54 @@ class UIAttentionPredictor:
         x, y = position
         task_lower = task.lower()
         score = 0.5  # Default score
-        
-        # Common task-position associations
-        if self.platform == Platform.ANDROID:
+
+        # Status checks with platform-specific positions
+        if any(status in task_lower for status in ["time", "clock", "hour"]):
+            if self.platform == Platform.ANDROID:
+                # Time in top-center
+                score = 0.9 if 0.4 < x < 0.6 and y < 0.1 else 0.1
+            elif self.platform == Platform.IOS:
+                # Time in top-center or Dynamic Island
+                score = 0.9 if (0.4 < x < 0.6 and y < 0.1) else 0.1
+            else:  # DESKTOP
+                # Time in bottom-right (Windows) or top-right (Mac)
+                score = 0.9 if (x > 0.8 and y > 0.9) or (x > 0.8 and y < 0.1) else 0.1
+
+        elif any(status in task_lower for status in ["battery", "charge", "power"]):
+            if self.platform == Platform.ANDROID:
+                # Battery in top-right
+                score = 0.9 if x > 0.8 and y < 0.1 else 0.1
+            elif self.platform == Platform.IOS:
+                # Battery in top-right or Dynamic Island
+                score = 0.9 if (x > 0.8 and y < 0.1) or (0.4 < x < 0.6 and y < 0.05) else 0.1
+            else:  # DESKTOP
+                # Battery in bottom-right (Windows) or top-right (Mac)
+                score = 0.9 if (x > 0.7 and y > 0.9) or (x > 0.7 and y < 0.1) else 0.1
+
+        elif any(status in task_lower for status in ["wifi", "network", "signal", "connection"]):
+            if self.platform == Platform.ANDROID:
+                # Network in top-right
+                score = 0.9 if x > 0.7 and y < 0.1 else 0.1
+            elif self.platform == Platform.IOS:
+                # Network in top-right or Dynamic Island
+                score = 0.9 if (x > 0.7 and y < 0.1) or (0.4 < x < 0.6 and y < 0.05) else 0.1
+            else:  # DESKTOP
+                # Network in bottom-right (Windows) or top-right (Mac)
+                score = 0.9 if (x > 0.6 and y > 0.9) or (x > 0.6 and y < 0.1) else 0.1
+
+        elif any(status in task_lower for status in ["notification", "alert", "message"]):
+            if self.platform == Platform.ANDROID:
+                # Android notifications in top bar
+                score = 0.9 if y < 0.1 else 0.2
+            elif self.platform == Platform.IOS:
+                # iOS notifications in top or Dynamic Island
+                score = 0.9 if (y < 0.1) or (0.4 < x < 0.6 and y < 0.05) else 0.2
+            else:  # DESKTOP
+                # Windows notifications in bottom-right, Mac in top-right
+                score = 0.9 if (x > 0.9 and y > 0.8) or (x > 0.8 and y < 0.2) else 0.2
+
+        # Rest of platform-specific tasks remain the same...
+        elif self.platform == Platform.ANDROID:
             if "back" in task_lower or "previous" in task_lower:
                 # Back action is usually top-left
                 score = 0.9 if x < 0.2 and y < 0.2 else 0.1
@@ -259,7 +305,7 @@ class UIAttentionPredictor:
                 score = 0.7 if 0.2 < x < 0.8 and 0.2 < y < 0.8 else 0.3
         
         # Tech-savvy users have stronger position-task associations
-        tech_factor = self.tech_savviness / 5.0  # 1-10 scale becomes 0.2-2.0
+        tech_factor = self.tech_savviness / 5.0
         self._task_score_cache[cache_key] = score * tech_factor
         return self._task_score_cache[cache_key]
 
@@ -302,22 +348,150 @@ class UIAttentionPredictor:
         
         return merged_candidates
 
-    def _extract_ui_elements_from_image(self, ui_image: Image) -> List[AttentionCandidate]:
+
+    def _extract_ui_elements_from_image(self, ui_image: Image, elements_data: List[Dict]) -> List[AttentionCandidate]:
         """
-        Extract UI elements from the image and convert them to attention candidates.
-        Uses BLIP-2 and other models to detect and analyze UI elements.
+        Convert provided UI elements data into attention candidates with visual properties.
         
         Args:
             ui_image: PIL Image of the UI screenshot
-            
+            elements_data: List of dictionaries containing:
+                - type: str (button, text, icon, etc)
+                - text: str (if any)
+                - bounds: Dict with x1,y1,x2,y2 in normalized coordinates
+        
         Returns:
-            List of AttentionCandidate objects representing detected UI elements
+            List of AttentionCandidate objects with computed visual properties
         """
-        pass
+        candidates = []
+        img_array = np.array(ui_image)
+        
+        for idx, element in enumerate(elements_data):
+            # Convert normalized bounds to pixel coordinates
+            x1, y1 = int(element['bounds']['x1'] * ui_image.width), int(element['bounds']['y1'] * ui_image.height)
+            x2, y2 = int(element['bounds']['x2'] * ui_image.width), int(element['bounds']['y2'] * ui_image.height)
+            
+            # Extract element region
+            element_region = img_array[y1:y2, x1:x2]
+            
+            # Calculate visual properties
+            visual_properties = {
+                # Size relative to screen area
+                "size": ((x2-x1) * (y2-y1)) / (ui_image.width * ui_image.height),
+                
+                # Contrast: difference between element and surroundings
+                "contrast": self._calculate_contrast(img_array, x1, y1, x2, y2),
+                
+                # Color intensity: average saturation and value in HSV
+                "color_intensity": self._calculate_color_intensity(element_region),
+                
+                # Motion: placeholder for animated elements (would need temporal data)
+                "is_animated": 0.0,
+                
+                # Isolation: measure of whitespace around element
+                "whitespace": self._calculate_isolation(img_array, x1, y1, x2, y2)
+            }
+            
+            # Create UIElement
+            ui_element = UIElement(
+                id=f"element_{idx}",
+                element_type=element['type'],
+                bounds=element['bounds'],
+                visual_properties=visual_properties,
+                platform_specific={
+                    "is_platform_pattern": False  # Could be determined based on type/position
+                }
+            )
+            
+            # Create AttentionCandidate
+            candidate = AttentionCandidate(
+                position=((x1 + x2) / (2 * ui_image.width), (y1 + y2) / (2 * ui_image.height)),
+                candidate_type='ui_element',
+                element_id=ui_element.id,
+                element=ui_element
+            )
+            
+            candidates.append(candidate)
+        
+        return candidates
+
+
+    def _calculate_contrast(self, img_array: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> float:
+        """Calculate contrast between element and its surroundings"""
+        # Convert to grayscale if needed
+        if len(img_array.shape) == 3:
+            img_gray = np.mean(img_array, axis=2)
+        else:
+            img_gray = img_array
+            
+        # Get element and surrounding regions
+        element = img_gray[y1:y2, x1:x2]
+        
+        # Define surrounding margin
+        margin = 10
+        y_min, y_max = max(0, y1-margin), min(img_gray.shape[0], y2+margin)
+        x_min, x_max = max(0, x1-margin), min(img_gray.shape[1], x2+margin)
+        
+        # Get surrounding region (excluding element)
+        surround = np.concatenate([
+            img_gray[y_min:y1, x_min:x_max],  # top
+            img_gray[y2:y_max, x_min:x_max],  # bottom
+            img_gray[y1:y2, x_min:x1],        # left
+            img_gray[y1:y2, x2:x_max]         # right
+        ]) if y_min < y1 and y2 < y_max and x_min < x1 and x2 < x_max else np.array([])
+        
+        if surround.size == 0:
+            return 0.0
+            
+        # Calculate contrast as normalized absolute difference
+        contrast = abs(np.mean(element) - np.mean(surround)) / 255.0
+        return float(contrast)
+
+
+    def _calculate_color_intensity(self, region: np.ndarray) -> float:
+        """Calculate color intensity from RGB region"""
+        if region.size == 0:
+            return 0.0
+            
+        # Convert to HSV
+        region_hsv = cv2.cvtColor(region, cv2.COLOR_RGB2HSV)
+        
+        # Calculate average saturation and value
+        saturation = np.mean(region_hsv[:, :, 1]) / 255.0
+        value = np.mean(region_hsv[:, :, 2]) / 255.0
+        
+        # Combine saturation and value
+        return float((saturation + value) / 2)
+
+
+    def _calculate_isolation(self, img_array: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> float:
+        """Calculate isolation based on surrounding whitespace"""
+        # Define margin to check for whitespace
+        margin = int(min(img_array.shape[0], img_array.shape[1]) * 0.05)
+        
+        # Calculate boundaries for surrounding region
+        y_min, y_max = max(0, y1-margin), min(img_array.shape[0], y2+margin)
+        x_min, x_max = max(0, x1-margin), min(img_array.shape[1], x2+margin)
+        
+        # Get surrounding region
+        surround = img_array[y_min:y_max, x_min:x_max]
+        
+        if surround.size == 0:
+            return 0.0
+            
+        # Convert to grayscale if needed
+        if len(surround.shape) == 3:
+            surround = np.mean(surround, axis=2)
+            
+        # Calculate whitespace as ratio of light pixels
+        whitespace_ratio = np.mean(surround > 240) # Assuming 240+ is "white"
+        return float(whitespace_ratio)
+
 
     def predict_attention(self, 
                          ui_image: Image,
                          task: str,
+                         elements_data: List[Dict],
                          top_k: int = 3) -> Dict[str, any]:
         """
         Predict attention points for a UI screenshot.
@@ -325,13 +499,17 @@ class UIAttentionPredictor:
         Args:
             ui_image: PIL Image of the UI screenshot
             task: Description of the user's current task
+            elements_data: List of dictionaries containing:
+                - type: str (button, text, icon, etc)
+                - text: str (if any)
+                - bounds: Dict with x1,y1,x2,y2 in normalized coordinates
             top_k: Number of attention points to return
             
         Returns:
             Dictionary containing primary focus, secondary focuses, and attention distribution
         """
-        # Extract UI elements from image
-        attention_candidates = self._extract_ui_elements_from_image(ui_image)
+        # Extract UI elements from image with provided data
+        attention_candidates = self._extract_ui_elements_from_image(ui_image, elements_data)
         
         # Add platform hotspots
         attention_candidates.extend(self._generate_platform_hotspots())
@@ -549,50 +727,35 @@ predictor = UIAttentionPredictor(
     tech_savviness=3
 )
 
-# Create attention candidates from both UI elements and platform hotspots
-candidates = [
-    # UI Elements
-    AttentionCandidate(
-        position=(0.15, 0.15),
-        candidate_type='ui_element',
-        element_id='btn_1',
-        element=UIElement(
-            id="btn_1",
-            element_type="button",
-            bounds={"x1": 0.1, "y1": 0.1, "x2": 0.2, "y2": 0.2},
-            visual_properties={
-                "size": 0.8,
-                "contrast": 0.9,
-                "text_emphasis": 0.7
-            },
-            platform_specific={
-                "is_back_button": True,
-                "is_menu": False,
-                "is_primary_action": True,
-                "is_navigation": False
-            }
-        )
-    ),
-    
-    # Platform Hotspots (no UI elements)
-    AttentionCandidate(
-        position=(0.1, 0.1),  # Top-left corner (Android back button area)
-        candidate_type='platform_hotspot'
-    ),
-    AttentionCandidate(
-        position=(0.9, 0.95),  # Bottom-right corner (Android FAB area)
-        candidate_type='platform_hotspot'
-    ),
-    AttentionCandidate(
-        position=(0.5, 0.95),  # Bottom center (Navigation bar area)
-        candidate_type='platform_hotspot'
-    )
+# Example elements data
+elements_data = [
+    {
+        "type": "button",
+        "text": "Settings",
+        "bounds": {
+            "x1": 0.1,  # These are normalized coordinates (0-1)
+            "y1": 0.1,
+            "x2": 0.2,
+            "y2": 0.2
+        }
+    },
+    {
+        "type": "icon",
+        "text": "menu",
+        "bounds": {
+            "x1": 0.8,
+            "y1": 0.1,
+            "x2": 0.9,
+            "y2": 0.2
+        }
+    }
 ]
 
 # Get prediction
 result = predictor.predict_attention(
     ui_image=Image.open("path_to_ui_image.png"),
-    task="Find the settings menu"
+    task="Find the settings menu",
+    elements_data=elements_data
 )
 
 print(result)
