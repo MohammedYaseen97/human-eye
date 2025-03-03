@@ -4,7 +4,6 @@ import numpy as np
 from enum import Enum
 from sentence_transformers import SentenceTransformer
 from PIL import Image
-from lavis.models import load_model_and_preprocess
 import torch
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
 import cv2  # For color space conversion
