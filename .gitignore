@@ -1,5 +1,6 @@
 virtual/
 __pycache__/
+models/weights/
 *.gradio/
 *.pyc
 *.deb

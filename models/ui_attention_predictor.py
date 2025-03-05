@@ -2,16 +2,15 @@ from dataclasses import dataclass
 from typing import List, Dict, Tuple, Optional
 import numpy as np
 from enum import Enum
-from sentence_transformers import SentenceTransformer
 from PIL import Image
-import torch
-from transformers import Blip2Processor, Blip2ForConditionalGeneration
 import cv2  # For color space conversion
+
 
 class Platform(Enum):
     ANDROID = "android"
     IOS = "ios"
     DESKTOP = "desktop"
+
 
 @dataclass
 class UIElement:
@@ -40,12 +39,10 @@ class AttentionCandidate:
 
 
 class UIAttentionPredictor:
-    def __init__(self, platform: Platform, tech_savviness: int):
+    def __init__(self):
         """
         Initialize the predictor with platform and user tech savviness (1-10)
         """
-        self.platform = platform
-        self.tech_savviness = max(1, min(10, tech_savviness))
         
         # Define all possible hotspots with their normalized coordinates and weights
         self.hotspot_definitions = {
@@ -233,7 +230,7 @@ class UIAttentionPredictor:
         
         # Inverse tech savviness modifier for visual attraction
         # Less tech-savvy users rely more on visual properties
-        tech_factor = (11 - self.tech_savviness) / 5.0  # 1-10 scale becomes 2.0-0.2
+        tech_factor = (11 - self.tech_savv) / 5.0  # 1-10 scale becomes 2.0-0.2
         
         return visual_score * tech_factor
     
@@ -286,12 +283,12 @@ class UIAttentionPredictor:
                 max_score = max(max_score, score)
         
         # Apply tech savviness modifier to hotspot score
-        tech_factor = self.tech_savviness / 5.0  # 1-10 scale becomes 0.2-2.0
+        tech_factor = self.tech_savv / 5.0  # 1-10 scale becomes 0.2-2.0
         hotspot_score = max_score * tech_factor
         
         # Combine hotspot score with center bias
         # Center bias weight increases as tech savviness decreases
-        center_weight = 0.4 + (0.2 * (11 - self.tech_savviness) / 10)  # 0.4-0.6 range
+        center_weight = 0.4 + (0.2 * (11 - self.tech_savv) / 10)  # 0.4-0.6 range
         hotspot_weight = 1 - center_weight
         
         return (hotspot_score * hotspot_weight) + (center_score * center_weight)
@@ -392,7 +389,7 @@ class UIAttentionPredictor:
             max_score = max(max_score, final_hotspot_score)
         
         # Apply tech savviness modifier
-        tech_factor = self.tech_savviness / 5.0 # 1-10 scale becomes 0.2-2.0
+        tech_factor = self.tech_savv / 5.0 # 1-10 scale becomes 0.2-2.0
         
         self._task_score_cache[cache_key] = max_score * tech_factor
         return self._task_score_cache[cache_key]
@@ -584,9 +581,11 @@ class UIAttentionPredictor:
         return float(whitespace_ratio)
 
 
-    def predict_attention(self, 
-                         ui_image: Image,
+    def predict_attention(self,
+                         platform: Platform,
                          task: str,
+                         tech_savv: int,
+                         ui_image: Image,
                          elements_data: List[Dict]) -> Dict[str, any]:
         """
         Predict attention points for a UI screenshot.
@@ -602,6 +601,9 @@ class UIAttentionPredictor:
         Returns:
             Dictionary containing primary focus, secondary focuses, and attention distribution
         """
+        self.platform = platform
+        self.tech_savv = tech_savv
+        
         # Extract UI elements from image with provided data
         attention_candidates = self._extract_ui_elements_from_image(ui_image, elements_data)
         
@@ -622,13 +624,13 @@ class UIAttentionPredictor:
             # Weight the scores based on tech savviness
             # Tech savvy users: position & task matter more
             # Non-tech savvy users: visual attraction matters more
-            if self.tech_savviness >= 7:
+            if tech_savv >= 7:
                 final_score = (
                     position_score * 0.3 +
                     task_score * 0.6 +
                     visual_score * 0.1
                 )
-            elif self.tech_savviness <= 3:
+            elif tech_savv <= 3:
                 final_score = (
                     position_score * 0.2 +
                     task_score * 0.2 +
@@ -705,7 +707,7 @@ class UIAttentionPredictor:
             # Add hotspot-specific reasoning
             if task_score > 0.7:
                 reasons.append("Task-relevant hotspot")
-            if self.tech_savviness >= 7:
+            if self.tech_savv >= 7:
                 reasons.append("Tech-savvy user preference")
         
         return ", ".join(reasons) if reasons else "Based on general UI principles"
