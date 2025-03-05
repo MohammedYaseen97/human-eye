@@ -68,7 +68,8 @@ class UIPredictor:
             
             if debug:
                 print(json.dumps(result, indent=4))
-                self.ui_attention_predictor.visualize_attention(result, image, alpha=0.9)
+                attention_image = self.ui_attention_predictor.visualize_attention(result, image, alpha=0.9)
+                display_image(attention_image, jup=False)
             
             # Stream each timestep individually
             for timestep in self._generate_timesteps(
@@ -200,15 +201,11 @@ class UIPredictor:
 
 
 if __name__ == "__main__":
-    try:
-        predictor = UIPredictor()
-        image = Image.open("images/android_home.jpg")
-        for step in predictor.predict(image, 25, Platform.ANDROID, "find the battery icon", 9, debug=True):
-            if step["status"] == "error":
-                print(step["message"])
-                print(step["traceback"])
-            else:
-                display_image(step["timestep"], jup=False)
-    finally:
-        # Clean up all matplotlib windows
-        plt.close('all')
+    predictor = UIPredictor()
+    image = Image.open("images/android_home.jpg")
+    for step in predictor.predict(image, 25, Platform.ANDROID, "find the battery icon", 9, debug=True):
+        if step["status"] == "error":
+            print(step["message"])
+            print(step["traceback"])
+        else:
+            display_image(step["timestep"], jup=False)
