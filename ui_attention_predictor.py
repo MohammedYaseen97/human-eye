@@ -47,43 +47,156 @@ class UIAttentionPredictor:
         self.platform = platform
         self.tech_savviness = max(1, min(10, tech_savviness))
         
-        # Platform-specific priority zones with attention weights (0-1)
-        self.platform_zones = {
+        # Define all possible hotspots with their normalized coordinates and weights
+        self.hotspot_definitions = {
             Platform.ANDROID: {
-                "top_left": 0.9,    # System back button area
-                "bottom": 0.8,       # Bottom navigation bar with main app actions
-                "bottom_right": 0.7, # Floating Action Button (circular primary action)
-                "top_right": 0.6,    # Overflow menu (3-dot menu) with additional options
-                "center": 0.5,       # Main content area
+                # System UI elements
+                "status_bar": {
+                    "bounds": {"x1": 0.0, "y1": 0.0, "x2": 1.0, "y2": 0.05},
+                    "weight": 0.9
+                },
+                "time": {
+                    "bounds": {"x1": 0.0, "y1": 0.0, "x2": 0.2, "y2": 0.05},
+                    "weight": 0.9
+                },
+                "battery": {
+                    "bounds": {"x1": 0.85, "y1": 0.0, "x2": 1.0, "y2": 0.05},
+                    "weight": 0.9
+                },
+                "wifi": {
+                    "bounds": {"x1": 0.75, "y1": 0.0, "x2": 0.85, "y2": 0.05},
+                    "weight": 0.9
+                },
+                "notifications": {
+                    "bounds": {"x1": 0.0, "y1": 0.0, "x2": 0.3, "y2": 0.05},
+                    "weight": 0.9
+                },
+                
+                # Navigation elements
+                "bottom_nav": {
+                    "bounds": {"x1": 0.3, "y1": 0.95, "x2": 0.7, "y2": 1.0},
+                    "weight": 0.8
+                },
+                "back_button_shortcut": {
+                    "bounds": {"x1": 0.25, "y1": 0.95, "x2": 0.35, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "menu_button_shortcut": {
+                    "bounds": {"x1": 0.45, "y1": 0.95, "x2": 0.55, "y2": 1.0},
+                    "weight": 0.8
+                },
+                "home_button_shortcut": {
+                    "bounds": {"x1": 0.45, "y1": 0.95, "x2": 0.55, "y2": 1.0},
+                    "weight": 0.8
+                },
+                "back_button_ui": {
+                    "bounds": {"x1": 0.15, "y1": 0.05, "x2": 0.25, "y2": 0.15},
+                    "weight": 0.9
+                },
+                "menu_button_ui": {
+                    "bounds": {"x1": 0.75, "y1": 0.05, "x2": 0.85, "y2": 0.15},
+                    "weight": 0.8
+                }
             },
+            
             Platform.IOS: {
-                "left_edge": 0.9,    # Back gesture swipe area
-                "bottom": 0.8,       # Tab bar for main navigation
-                "top_right": 0.7,    # Action buttons (Share, Edit etc)
-                "top": 0.6,          # Pull-down for notifications/search
-                "bottom_center": 0.7, # Home indicator grab area
-                "top_center": 0.6,   # Dynamic Island / Notch interactive area
-                "center": 0.5        # Main content area
+                # System UI elements
+                "status_bar": {
+                    "bounds": {"x1": 0.0, "y1": 0.95, "x2": 1.0, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "dynamic_island": {
+                    "bounds": {"x1": 0.4, "y1": 0.95, "x2": 0.6, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "time": {
+                    "bounds": {"x1": 0.45, "y1": 0.95, "x2": 0.55, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "battery": {
+                    "bounds": {"x1": 0.85, "y1": 0.95, "x2": 0.95, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "wifi": {
+                    "bounds": {"x1": 0.75, "y1": 0.95, "x2": 0.85, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "notifications": {
+                    "bounds": {"x1": 0.95, "y1": 0.95, "x2": 1.0, "y2": 1.0},
+                    "weight": 0.9
+                },
+                
+                # Navigation elements
+                "back_gesture": {
+                    "bounds": {"x1": 0.0, "y1": 0.0, "x2": 0.1, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "action_buttons": {
+                    "bounds": {"x1": 0.85, "y1": 0.85, "x2": 1.0, "y2": 0.95},
+                    "weight": 0.8
+                },
+                "pull_down": {
+                    "bounds": {"x1": 0.0, "y1": 0.9, "x2": 1.0, "y2": 1.0},
+                    "weight": 0.8
+                },
+                "home_indicator": {
+                    "bounds": {"x1": 0.4, "y1": 0.0, "x2": 0.6, "y2": 0.05},
+                    "weight": 0.8
+                },
+                "tab_bar": {
+                    "bounds": {"x1": 0.0, "y1": 0.0, "x2": 1.0, "y2": 0.1},
+                    "weight": 0.8
+                }
             },
+            
             Platform.DESKTOP: {
-                "top_left": 0.9,     # Application menu and main navigation
-                "top_right": 0.8,    # User profile, settings, notifications
-                "left": 0.7,         # Navigation sidebar/tree
-                "center": 0.6,       # Primary content area
-                "right": 0.5         # Secondary sidebar (details, properties etc)
+                # System UI elements
+                "menu_bar": {
+                    "bounds": {"x1": 0.0, "y1": 0.95, "x2": 1.0, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "system_tray": {
+                    "bounds": {"x1": 0.9, "y1": 0.95, "x2": 1.0, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "time": {
+                    "bounds": {"x1": 0.85, "y1": 0.95, "x2": 0.95, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "battery": {
+                    "bounds": {"x1": 0.85, "y1": 0.95, "x2": 0.95, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "wifi": {
+                    "bounds": {"x1": 0.85, "y1": 0.95, "x2": 0.95, "y2": 1.0},
+                    "weight": 0.9
+                },
+                "notifications": {
+                    "bounds": {"x1": 0.8, "y1": 0.7, "x2": 0.9, "y2": 0.8},
+                    "weight": 0.9
+                },
+                
+                # Navigation elements
+                "start_menu": {
+                    "bounds": {"x1": 0.3, "y1": 0.85, "x2": 0.45, "y2": 0.95},
+                    "weight": 0.9
+                },
+                "nav_sidebar": {
+                    "bounds": {"x1": 0.9, "y1": 0.15, "x2": 1.0, "y2": 0.85},
+                    "weight": 0.7
+                },
+                "secondary_sidebar": {
+                    "bounds": {"x1": 0.8, "y1": 0.15, "x2": 0.9, "y2": 0.85},
+                    "weight": 0.6
+                }
             }
         }
 
-        # Initialize models for text and image understanding
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.text_model = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        # Initialize BLIP-2 from transformers
-        self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
-        self.blip_model = Blip2ForConditionalGeneration.from_pretrained(
-            "Salesforce/blip2-opt-2.7b", 
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-        ).to(self.device)
+        self.distance_threshold = {
+            Platform.ANDROID: 0.05,
+            Platform.IOS: 0.05,
+            Platform.DESKTOP: 0.05
+        }
 
         self._task_score_cache = {}  # Simple cache for task scores
 
@@ -128,184 +241,172 @@ class UIAttentionPredictor:
     def _calculate_base_position_score(self, position: Tuple[float, float]) -> float:
         """
         Calculate base position score for any candidate based on platform conventions
+        and center-screen bias using the hotspot definitions.
         """
         x, y = position
-        zones = self.platform_zones[self.platform]
-        score = 0.0
+        platform_hotspots = self.hotspot_definitions[self.platform]
+        max_score = 0.0
         
-        # Common platform patterns with their base attention weights
-        if self.platform == Platform.ANDROID:
-            # Back button area
-            if x < 0.2 and y < 0.2:
-                score = zones.get("top_left", 0.5)
-            # Overflow menu area
-            elif x > 0.8 and y < 0.2:
-                score = zones.get("top_right", 0.5)
-            # FAB area
-            elif x > 0.8 and y > 0.8:
-                score = zones.get("bottom_right", 0.5)
-            # Bottom navigation
-            elif 0.2 < x < 0.8 and y > 0.8:
-                score = zones.get("bottom", 0.5)
-            # Center content
-            elif 0.2 < x < 0.8 and 0.2 < y < 0.8:
-                score = zones.get("center", 0.5)
+        # Calculate center-screen bias
+        center_x, center_y = 0.5, 0.5  # Screen center in normalized coordinates
+        distance_to_center = np.sqrt(
+            (x - center_x)**2 + 
+            (y - center_y)**2
+        )
+        # Convert distance to score (1 at center, 0 at corners)
+        max_center_distance = np.sqrt(0.5**2 + 0.5**2)  # Distance from center to corner
+        center_score = 1 - (distance_to_center / max_center_distance)
         
-        elif self.platform == Platform.IOS:
-            # Back gesture area
-            if x < 0.1:
-                score = zones.get("left_edge", 0.5)
-            # Action buttons area
-            elif x > 0.8 and y < 0.2:
-                score = zones.get("top_right", 0.5)
-            # Tab bar area
-            elif y > 0.8:
-                score = zones.get("bottom", 0.5)
-            # Dynamic Island area
-            elif 0.4 < x < 0.6 and y < 0.1:
-                score = zones.get("top_center", 0.5)
-            # Pull-down area
-            elif y < 0.1:
-                score = zones.get("top", 0.5)
-            # Home indicator area
-            elif 0.4 < x < 0.6 and y > 0.9:
-                score = zones.get("bottom_center", 0.5)
-            # Main content
-            elif 0.1 < x < 0.9 and 0.2 < y < 0.8:
-                score = zones.get("center", 0.5)
+        # Check each hotspot definition
+        for hotspot_name, hotspot_data in platform_hotspots.items():
+            bounds = hotspot_data["bounds"]
+            weight = hotspot_data["weight"]
+            
+            # Check if position is within hotspot bounds
+            if (bounds["x1"] <= x <= bounds["x2"] and 
+                bounds["y1"] <= y <= bounds["y2"]):
+                # Calculate distance from center of hotspot
+                center_x = (bounds["x1"] + bounds["x2"]) / 2
+                center_y = (bounds["y1"] + bounds["y2"]) / 2
+                distance = np.sqrt(
+                    (x - center_x)**2 + 
+                    (y - center_y)**2
+                )
+                
+                # Calculate score based on distance from center
+                # Closer to center = higher score
+                max_distance = np.sqrt(
+                    (bounds["x2"] - bounds["x1"])**2 + 
+                    (bounds["y2"] - bounds["y1"])**2
+                ) / 2
+                distance_score = 1 - (distance / max_distance)
+                
+                # Combine with hotspot weight
+                score = distance_score * weight
+                max_score = max(max_score, score)
         
-        elif self.platform == Platform.DESKTOP:
-            # Application menu area
-            if x < 0.2 and y < 0.2:
-                score = zones.get("top_left", 0.5)
-            # User profile/settings area
-            elif x > 0.8 and y < 0.2:
-                score = zones.get("top_right", 0.5)
-            # Navigation sidebar
-            elif x < 0.2 and 0.2 < y < 0.8:
-                score = zones.get("left", 0.5)
-            # Secondary sidebar
-            elif x > 0.8 and 0.2 < y < 0.8:
-                score = zones.get("right", 0.5)
-            # Main content area
-            elif 0.2 < x < 0.8 and 0.2 < y < 0.8:
-                score = zones.get("center", 0.5)
-        
-        # Apply tech savviness modifier to position score
+        # Apply tech savviness modifier to hotspot score
         tech_factor = self.tech_savviness / 5.0  # 1-10 scale becomes 0.2-2.0
-        return score * tech_factor
+        hotspot_score = max_score * tech_factor
+        
+        # Combine hotspot score with center bias
+        # Center bias weight increases as tech savviness decreases
+        center_weight = 0.4 + (0.2 * (11 - self.tech_savviness) / 10)  # 0.4-0.6 range
+        hotspot_weight = 1 - center_weight
+        
+        return (hotspot_score * hotspot_weight) + (center_score * center_weight)
 
 
     def _calculate_base_task_score(self, position: Tuple[float, float], task: str) -> float:
-        """Calculate task-based score with caching"""
+        """Calculate task-based score using hotspot definitions and caching"""
         cache_key = (position, task.lower())
         if cache_key in self._task_score_cache:
             return self._task_score_cache[cache_key]
         
         x, y = position
         task_lower = task.lower()
-        score = 0.5  # Default score
+        platform_hotspots = self.hotspot_definitions[self.platform]
+        max_score = 0.0  # Default score
 
-        # Status checks with platform-specific positions
-        if any(status in task_lower for status in ["time", "clock", "hour"]):
+        # Check each hotspot for task relevance
+        for hotspot_name, hotspot_data in platform_hotspots.items():
+            bounds = hotspot_data["bounds"]
+            weight = hotspot_data["weight"]
+            
+            # Skip if position is not in this hotspot
+            if not (bounds["x1"] <= x <= bounds["x2"] and 
+                   bounds["y1"] <= y <= bounds["y2"]):
+                continue
+            
+            # Calculate distance from center
+            center_x = (bounds["x1"] + bounds["x2"]) / 2
+            center_y = (bounds["y1"] + bounds["y2"]) / 2
+            distance = np.sqrt(
+                (x - center_x)**2 + 
+                (y - center_y)**2
+            )
+            
+            # Calculate base score for this hotspot
+            hotspot_score = 0.0
+            
+            # Check hotspot-specific task keywords
+            if hotspot_name == "time" and any(status in task_lower for status in ["time", "clock", "hour"]):
+                print("time")
+                hotspot_score = 0.9
+            elif hotspot_name == "battery" and any(status in task_lower for status in ["battery", "charge", "power"]):
+                print("battery")
+                hotspot_score = 0.9
+            elif hotspot_name == "wifi" and any(status in task_lower for status in ["wifi", "network", "signal", "connection"]):
+                print("wifi")
+                hotspot_score = 0.9
+            elif hotspot_name == "notifications" and any(status in task_lower for status in ["notification", "alert", "message"]):
+                print("notifications")
+                hotspot_score = 0.9
+            elif hotspot_name == "status_bar" and any(status in task_lower for status in ["status", "system"]):
+                print("status_bar")
+                hotspot_score = 0.8
+            elif hotspot_name == "dynamic_island" and any(status in task_lower for status in ["dynamic", "island", "notch"]):
+                print("dynamic_island")
+                hotspot_score = 0.8
+            elif hotspot_name == "system_tray" and any(status in task_lower for status in ["tray", "system"]):
+                print("system_tray")
+                hotspot_score = 0.8
+            elif hotspot_name == "menu_bar" and any(status in task_lower for status in ["menu", "file"]):
+                print("menu_bar")
+                hotspot_score = 0.8
+            
+            # Platform-specific navigation tasks
             if self.platform == Platform.ANDROID:
-                # Time in top-center
-                score = 0.9 if 0.4 < x < 0.6 and y < 0.1 else 0.1
+                if hotspot_name == "back_button" and any(nav in task_lower for nav in ["back", "previous"]):
+                    print("android back_button")
+                    hotspot_score = 0.9
+                elif hotspot_name == "menu_button" and any(nav in task_lower for nav in ["menu", "options"]):
+                    print("android menu_button")
+                    hotspot_score = 0.8
+                elif hotspot_name == "fab" and any(nav in task_lower for nav in ["add", "create"]):
+                    print("android fab")
+                    hotspot_score = 0.8
+                elif hotspot_name.startswith("bottom_nav") and any(nav in task_lower for nav in ["home", "search", "profile"]):
+                    print(f"android {hotspot_name}")
+                    hotspot_score = 0.7
+            
             elif self.platform == Platform.IOS:
-                # Time in top-center or Dynamic Island
-                score = 0.9 if (0.4 < x < 0.6 and y < 0.1) else 0.1
-            else:  # DESKTOP
-                # Time in bottom-right (Windows) or top-right (Mac)
-                score = 0.9 if (x > 0.8 and y > 0.9) or (x > 0.8 and y < 0.1) else 0.1
-
-        elif any(status in task_lower for status in ["battery", "charge", "power"]):
-            if self.platform == Platform.ANDROID:
-                # Battery in top-right
-                score = 0.9 if x > 0.8 and y < 0.1 else 0.1
-            elif self.platform == Platform.IOS:
-                # Battery in top-right or Dynamic Island
-                score = 0.9 if (x > 0.8 and y < 0.1) or (0.4 < x < 0.6 and y < 0.05) else 0.1
-            else:  # DESKTOP
-                # Battery in bottom-right (Windows) or top-right (Mac)
-                score = 0.9 if (x > 0.7 and y > 0.9) or (x > 0.7 and y < 0.1) else 0.1
-
-        elif any(status in task_lower for status in ["wifi", "network", "signal", "connection"]):
-            if self.platform == Platform.ANDROID:
-                # Network in top-right
-                score = 0.9 if x > 0.7 and y < 0.1 else 0.1
-            elif self.platform == Platform.IOS:
-                # Network in top-right or Dynamic Island
-                score = 0.9 if (x > 0.7 and y < 0.1) or (0.4 < x < 0.6 and y < 0.05) else 0.1
-            else:  # DESKTOP
-                # Network in bottom-right (Windows) or top-right (Mac)
-                score = 0.9 if (x > 0.6 and y > 0.9) or (x > 0.6 and y < 0.1) else 0.1
-
-        elif any(status in task_lower for status in ["notification", "alert", "message"]):
-            if self.platform == Platform.ANDROID:
-                # Android notifications in top bar
-                score = 0.9 if y < 0.1 else 0.2
-            elif self.platform == Platform.IOS:
-                # iOS notifications in top or Dynamic Island
-                score = 0.9 if (y < 0.1) or (0.4 < x < 0.6 and y < 0.05) else 0.2
-            else:  # DESKTOP
-                # Windows notifications in bottom-right, Mac in top-right
-                score = 0.9 if (x > 0.9 and y > 0.8) or (x > 0.8 and y < 0.2) else 0.2
-
-        # Rest of platform-specific tasks remain the same...
-        elif self.platform == Platform.ANDROID:
-            if "back" in task_lower or "previous" in task_lower:
-                # Back action is usually top-left
-                score = 0.9 if x < 0.2 and y < 0.2 else 0.1
-            elif "menu" in task_lower or "options" in task_lower:
-                # Menu/options are usually top-right
-                score = 0.9 if x > 0.8 and y < 0.2 else 0.2
-            elif "add" in task_lower or "create" in task_lower:
-                # FAB actions are bottom-right
-                score = 0.9 if x > 0.8 and y > 0.8 else 0.3
-            elif any(nav in task_lower for nav in ["home", "search", "profile", "navigate"]):
-                # Navigation tasks focus on bottom bar
-                score = 0.8 if y > 0.8 else 0.3
-
-        elif self.platform == Platform.IOS:
-            if "back" in task_lower or "previous" in task_lower:
-                # Back gesture area on left edge
-                score = 0.9 if x < 0.1 else 0.1
-            elif "share" in task_lower or "action" in task_lower:
-                # Share/action buttons usually top-right
-                score = 0.9 if x > 0.8 and y < 0.2 else 0.2
-            elif "notification" in task_lower or "search" in task_lower:
-                # Pull-down area at top
-                score = 0.9 if y < 0.1 else 0.2
-            elif "home" in task_lower or "switch" in task_lower:
-                # Home indicator/app switching at bottom
-                score = 0.9 if y > 0.9 else 0.2
-            elif any(nav in task_lower for nav in ["tab", "navigate", "section"]):
-                # Tab bar navigation at bottom
-                score = 0.8 if y > 0.8 else 0.3
-            elif "control" in task_lower or "media" in task_lower:
-                # Dynamic Island interactions
-                score = 0.8 if 0.4 < x < 0.6 and y < 0.1 else 0.2
-
-        elif self.platform == Platform.DESKTOP:
-            if "menu" in task_lower or "file" in task_lower:
-                # Main menu in top-left
-                score = 0.9 if x < 0.2 and y < 0.2 else 0.1
-            elif "profile" in task_lower or "account" in task_lower or "settings" in task_lower:
-                # User/settings area in top-right
-                score = 0.9 if x > 0.8 and y < 0.2 else 0.2
-            elif "navigation" in task_lower or "sidebar" in task_lower:
-                # Main navigation sidebar on left
-                score = 0.8 if x < 0.2 and 0.2 < y < 0.8 else 0.2
-            elif "details" in task_lower or "properties" in task_lower:
-                # Secondary sidebar on right
-                score = 0.8 if x > 0.8 and 0.2 < y < 0.8 else 0.2
-            elif "content" in task_lower or "main" in task_lower:
-                # Main content area in center
-                score = 0.7 if 0.2 < x < 0.8 and 0.2 < y < 0.8 else 0.3
+                if hotspot_name == "back_gesture" and any(nav in task_lower for nav in ["back", "previous"]):
+                    hotspot_score = 0.9
+                elif hotspot_name == "action_buttons" and any(nav in task_lower for nav in ["share", "action"]):
+                    hotspot_score = 0.8
+                elif hotspot_name == "pull_down" and any(nav in task_lower for nav in ["notification", "search"]):
+                    hotspot_score = 0.8
+                elif hotspot_name == "home_indicator" and any(nav in task_lower for nav in ["home", "switch"]):
+                    hotspot_score = 0.8
+                elif hotspot_name == "tab_bar" and any(nav in task_lower for nav in ["tab", "navigate"]):
+                    hotspot_score = 0.7
+            
+            elif self.platform == Platform.DESKTOP:
+                if hotspot_name == "main_menu" and any(nav in task_lower for nav in ["menu", "file"]):
+                    hotspot_score = 0.9
+                elif hotspot_name == "user_menu" and any(nav in task_lower for nav in ["profile", "account", "settings"]):
+                    hotspot_score = 0.8
+                elif hotspot_name == "nav_sidebar" and any(nav in task_lower for nav in ["navigation", "sidebar"]):
+                    hotspot_score = 0.7
+                elif hotspot_name == "secondary_sidebar" and any(nav in task_lower for nav in ["details", "properties"]):
+                    hotspot_score = 0.6
+            
+            # Apply distance-based scaling
+            max_distance = np.sqrt(
+                (bounds["x2"] - bounds["x1"])**2 + 
+                (bounds["y2"] - bounds["y1"])**2
+            ) / 2
+            distance_score = 1 - (distance / max_distance)
+            
+            # Combine scores
+            final_hotspot_score = hotspot_score * distance_score * weight
+            max_score = max(max_score, final_hotspot_score)
         
-        # Tech-savvy users have stronger position-task associations
-        tech_factor = self.tech_savviness / 5.0
-        self._task_score_cache[cache_key] = score * tech_factor
+        # Apply tech savviness modifier
+        tech_factor = self.tech_savviness / 5.0 # 1-10 scale becomes 0.2-2.0
+        
+        self._task_score_cache[cache_key] = max_score * tech_factor
         return self._task_score_cache[cache_key]
 
 
@@ -415,36 +516,44 @@ class UIAttentionPredictor:
         return candidates
 
 
-    def _calculate_contrast(self, img_array: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> float:
-        """Calculate contrast between element and its surroundings"""
-        # Convert to grayscale if needed
+    def _calculate_contrast(self, img_array, x1, y1, x2, y2) -> float:
+        # Convert to LAB color space for better perceptual contrast
         if len(img_array.shape) == 3:
-            img_gray = np.mean(img_array, axis=2)
+            img_lab = cv2.cvtColor(img_array, cv2.COLOR_RGB2LAB)
         else:
-            img_gray = img_array
-            
-        # Get element and surrounding regions
-        element = img_gray[y1:y2, x1:x2]
+            img_lab = cv2.cvtColor(cv2.cvtColor(img_array, cv2.COLOR_GRAY2RGB), cv2.COLOR_RGB2LAB)
+
+        # Get element region
+        element = img_lab[y1:y2, x1:x2]
         
-        # Define surrounding margin
-        margin = 10
-        y_min, y_max = max(0, y1-margin), min(img_gray.shape[0], y2+margin)
-        x_min, x_max = max(0, x1-margin), min(img_gray.shape[1], x2+margin)
+        # Calculate dynamic margin based on element size
+        element_width = x2 - x1
+        element_height = y2 - y1
+        margin = min(20, int(max(element_width, element_height) * 0.2))
         
-        # Get surrounding region (excluding element)
-        surround = np.concatenate([
-            img_gray[y_min:y1, x_min:x_max],  # top
-            img_gray[y2:y_max, x_min:x_max],  # bottom
-            img_gray[y1:y2, x_min:x1],        # left
-            img_gray[y1:y2, x2:x_max]         # right
-        ]) if y_min < y1 and y2 < y_max and x_min < x1 and x2 < x_max else np.array([])
+        # Define surrounding region boundaries
+        y_min, y_max = max(0, y1-margin), min(img_lab.shape[0], y2+margin)
+        x_min, x_max = max(0, x1-margin), min(img_lab.shape[1], x2+margin)
         
-        if surround.size == 0:
-            return 0.0
-            
-        # Calculate contrast as normalized absolute difference
-        contrast = abs(np.mean(element) - np.mean(surround)) / 255.0
-        return float(contrast)
+        # Calculate contrasts using multiple metrics
+        contrasts = []
+        
+        # Luminance contrast (L channel)
+        element_l = np.mean(element[:,:,0])
+        surrounding_l = np.mean(img_lab[y_min:y_max, x_min:x_max, 0])
+        luminance_contrast = abs(element_l - surrounding_l) / 100.0
+        
+        # Color contrast (a and b channels)
+        element_a = np.mean(element[:,:,1])
+        element_b = np.mean(element[:,:,2])
+        surrounding_a = np.mean(img_lab[y_min:y_max, x_min:x_max, 1])
+        surrounding_b = np.mean(img_lab[y_min:y_max, x_min:x_max, 2])
+        color_contrast = np.sqrt((element_a - surrounding_a)**2 + (element_b - surrounding_b)**2) / 255.0
+        
+        # Combine contrasts with weights
+        final_contrast = 0.7 * luminance_contrast + 0.3 * color_contrast
+        
+        return float(final_contrast)
 
 
     def _calculate_color_intensity(self, region: np.ndarray) -> float:
@@ -490,8 +599,7 @@ class UIAttentionPredictor:
     def predict_attention(self, 
                          ui_image: Image,
                          task: str,
-                         elements_data: List[Dict],
-                         top_k: int = 3) -> Dict[str, any]:
+                         elements_data: List[Dict]) -> Dict[str, any]:
         """
         Predict attention points for a UI screenshot.
         
@@ -502,7 +610,6 @@ class UIAttentionPredictor:
                 - type: str (button, text, icon, etc)
                 - text: str (if any)
                 - bounds: Dict with x1,y1,x2,y2 in normalized coordinates
-            top_k: Number of attention points to return
             
         Returns:
             Dictionary containing primary focus, secondary focuses, and attention distribution
@@ -514,8 +621,8 @@ class UIAttentionPredictor:
         attention_candidates.extend(self._generate_platform_hotspots())
         
         # First, merge overlapping candidates
-        merged_candidates = self._merge_overlapping_candidates(attention_candidates)
-        
+        # merged_candidates = self._merge_overlapping_candidates(attention_candidates)
+        merged_candidates = attention_candidates
         attention_points = []
         
         for candidate in merged_candidates:
@@ -549,6 +656,7 @@ class UIAttentionPredictor:
             attention_points.append({
                 "element_id": candidate.element_id,
                 "position": candidate.position,
+                "candidate_type": candidate.candidate_type,
                 "score": final_score,
                 "component_scores": {
                     "position": position_score,
@@ -561,22 +669,21 @@ class UIAttentionPredictor:
         attention_points.sort(key=lambda x: x["score"], reverse=True)
         
         # Take top_k points and normalize their scores to get confidence distribution
-        top_points = attention_points[:top_k]
+        top_points = attention_points
         scores = np.array([point["score"] for point in top_points])
         
-        # Apply softmax to get confidence distribution
-        exp_scores = np.exp(scores - np.max(scores))  # Subtract max for numerical stability
-        confidences = exp_scores / exp_scores.sum()
-        
         # Add confidence to top points
-        for point, confidence in zip(top_points, confidences):
-            point["confidence"] = float(confidence)
+        for point, score in zip(top_points, scores):
+            point["scores"] = float(score)
             point["reasoning"] = self._generate_reasoning_v2(
                 next(c for c in merged_candidates if c.position == point["position"]),
                 point["component_scores"]["position"],
                 point["component_scores"]["task"],
                 point["component_scores"]["visual"]
             )
+        
+        # Merge close points
+        top_points = self._merge_close_points(top_points)
         
         return {
             "primary_focus": top_points[0] if top_points else None,
@@ -606,45 +713,47 @@ class UIAttentionPredictor:
                 reasons.append("High visual contrast")
             if candidate.element.platform_specific.get("is_platform_pattern", False):
                 reasons.append("Follows platform pattern")
+        elif candidate.candidate_type == 'platform_hotspot':
+            # Add hotspot-specific reasoning
+            if task_score > 0.7:
+                reasons.append("Task-relevant hotspot")
+            if self.tech_savviness >= 7:
+                reasons.append("Tech-savvy user preference")
         
         return ", ".join(reasons) if reasons else "Based on general UI principles"
 
 
     def _generate_platform_hotspots(self) -> List[AttentionCandidate]:
-        """Generate default platform hotspots based on current platform"""
+        """Generate platform hotspots based on the hotspot definitions"""
         hotspots = []
+        platform_hotspots = self.hotspot_definitions[self.platform]
         
-        if self.platform == Platform.ANDROID:
-            hotspots.extend([
-                AttentionCandidate(position=(0.1, 0.1), candidate_type='platform_hotspot'),  # Back button
-                AttentionCandidate(position=(0.9, 0.1), candidate_type='platform_hotspot'),  # Menu
-                AttentionCandidate(position=(0.9, 0.9), candidate_type='platform_hotspot'),  # FAB
-                AttentionCandidate(position=(0.5, 0.95), candidate_type='platform_hotspot'), # Nav bar
-            ])
-        elif self.platform == Platform.IOS:
-            hotspots.extend([
-                AttentionCandidate(position=(0.05, 0.5), candidate_type='platform_hotspot'), # Back gesture
-                AttentionCandidate(position=(0.9, 0.1), candidate_type='platform_hotspot'),  # Actions
-                AttentionCandidate(position=(0.5, 0.05), candidate_type='platform_hotspot'), # Pull down
-                AttentionCandidate(position=(0.5, 0.95), candidate_type='platform_hotspot'), # Home indicator
-                AttentionCandidate(position=(0.5, 0.05), candidate_type='platform_hotspot'), # Dynamic Island
-            ])
-        elif self.platform == Platform.DESKTOP:
-            hotspots.extend([
-                AttentionCandidate(position=(0.1, 0.1), candidate_type='platform_hotspot'),  # Menu
-                AttentionCandidate(position=(0.9, 0.1), candidate_type='platform_hotspot'),  # User/settings
-                AttentionCandidate(position=(0.1, 0.5), candidate_type='platform_hotspot'),  # Nav sidebar
-                AttentionCandidate(position=(0.9, 0.5), candidate_type='platform_hotspot'),  # Secondary sidebar
-            ])
+        for hotspot_name, hotspot_data in platform_hotspots.items():
+            # Calculate center point from bounds
+            bounds = hotspot_data["bounds"]
+            center_x = (bounds["x1"] + bounds["x2"]) / 2
+            center_y = (bounds["y1"] + bounds["y2"]) / 2
+            
+            # Create hotspot candidate
+            hotspot = AttentionCandidate(
+                position=(center_x, center_y),
+                candidate_type='platform_hotspot',
+                element_id=f"hotspot_{hotspot_name}"
+            )
+            hotspots.append(hotspot)
         
         return hotspots
+
 
     def visualize_attention(self, 
                            attention_result: Dict[str, any],
                            ui_image: Image,
-                           alpha: float = 0.6) -> Image:
+                           alpha: float = 0.6,
+                           top_k: int = 5) -> Image:
         """
         Visualize top attention points overlaid on the UI screenshot.
+        Red circles for UI elements, green circles for hotspots.
+        Coordinates are normalized from bottom-left origin.
         
         Args:
             attention_result: Result from predict_attention
@@ -667,18 +776,25 @@ class UIAttentionPredictor:
         width, height = ui_image.size
         
         # Function to convert normalized coordinates to pixel coordinates
+        # Flip y-coordinate since PIL uses top-left origin
         def norm_to_pixel(x: float, y: float) -> Tuple[int, int]:
-            return (int(x * width), int(y * height))
+            return (int(x * width), int(y * height))  # Flip y coordinate
         
         # Get the top attention points (these already have normalized confidence scores)
         points = [attention_result["primary_focus"]] + attention_result["secondary_focuses"]
+        points = points[:top_k]
+        scores = np.array([point["scores"] for point in points])
+        
+        # Apply softmax to get confidence distribution
+        exp_scores = np.exp(scores - np.max(scores))  # Subtract max for numerical stability
+        confidences = exp_scores / exp_scores.sum()
         
         # Draw attention circles
-        for point in points:
+        for i, point in enumerate(points):
             x, y = point["position"]
-            confidence = point["confidence"]  # Already normalized by softmax
+            confidence = confidences[i]  # Already normalized by softmax
             
-            # Convert to pixel coordinates
+            # Convert to pixel coordinates (y is now flipped)
             px, py = norm_to_pixel(x, y)
             
             # Calculate radius based on image size (e.g., 5% of width)
@@ -686,7 +802,9 @@ class UIAttentionPredictor:
             
             # Color intensity based only on confidence
             intensity = int(255 * confidence * alpha)
-            color = (255, 0, 0, intensity)  # Red with varying alpha
+            
+            # Choose color based on whether it's a hotspot or UI element
+            color = (0, 255, 0, intensity) if point["candidate_type"] == "platform_hotspot" else (255, 0, 0, intensity)  # Green for hotspots, Red for UI elements
             
             # Single solid circle for each attention point
             draw.ellipse(
@@ -700,10 +818,10 @@ class UIAttentionPredictor:
         
         # Add small confidence labels
         draw = ImageDraw.Draw(result)
-        for point in points:
+        for i, point in enumerate(points):
             x, y = point["position"]
-            px, py = norm_to_pixel(x, y)
-            confidence = point["confidence"]
+            px, py = norm_to_pixel(x, y)  # y is already flipped
+            confidence = confidences[i]
             
             # Draw white label with confidence percentage
             label = f'{confidence*100:.0f}%'
@@ -716,6 +834,57 @@ class UIAttentionPredictor:
             )
         
         return result
+
+
+    def _merge_close_points(self, attention_points: List[Dict]) -> List[Dict]:
+        """
+        Merge attention points that are close to each other.
+        
+        Args:
+            attention_points: List of attention point dictionaries
+            distance_threshold: Maximum normalized distance to consider points as "close"
+            
+        Returns:
+            List of merged attention points
+        """
+        # Sort points by score in descending order
+        sorted_points = sorted(attention_points, key=lambda x: x["scores"], reverse=True)
+        merged_points = []
+        skip_indices = set()
+        distance_threshold = self.distance_threshold.get(self.platform, 0.05)
+        
+        for i, point in enumerate(sorted_points):
+            if i in skip_indices:
+                continue
+            
+            # Get current point position
+            x1, y1 = point["position"]
+            merged_score = point["scores"]
+            
+            # Find all close points
+            close_points = []
+            for j, other_point in enumerate(sorted_points[i+1:], start=i+1):
+                x2, y2 = other_point["position"]
+                
+                # Calculate distance between points
+                distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+                
+                if distance <= distance_threshold:
+                    merged_score += other_point["scores"]
+                    close_points.append(j)
+                    skip_indices.add(j)
+            
+            # Create merged point with combined score
+            merged_point = point.copy()
+            merged_point["scores"] = merged_score
+            
+            # Update reasoning if points were merged
+            if close_points:
+                merged_point["reasoning"] += f" (Combined with {len(close_points)} nearby points)"
+            
+            merged_points.append(merged_point)
+        
+        return merged_points
 
 
 # Example usage:
