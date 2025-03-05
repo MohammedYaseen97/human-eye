@@ -331,43 +331,31 @@ class UIAttentionPredictor:
             
             # Check hotspot-specific task keywords
             if hotspot_name == "time" and any(status in task_lower for status in ["time", "clock", "hour"]):
-                print("time")
                 hotspot_score = 0.9
             elif hotspot_name == "battery" and any(status in task_lower for status in ["battery", "charge", "power"]):
-                print("battery")
                 hotspot_score = 0.9
             elif hotspot_name == "wifi" and any(status in task_lower for status in ["wifi", "network", "signal", "connection"]):
-                print("wifi")
                 hotspot_score = 0.9
             elif hotspot_name == "notifications" and any(status in task_lower for status in ["notification", "alert", "message"]):
-                print("notifications")
                 hotspot_score = 0.9
             elif hotspot_name == "status_bar" and any(status in task_lower for status in ["status", "system"]):
-                print("status_bar")
                 hotspot_score = 0.8
             elif hotspot_name == "dynamic_island" and any(status in task_lower for status in ["dynamic", "island", "notch"]):
-                print("dynamic_island")
                 hotspot_score = 0.8
             elif hotspot_name == "system_tray" and any(status in task_lower for status in ["tray", "system"]):
-                print("system_tray")
                 hotspot_score = 0.8
             elif hotspot_name == "menu_bar" and any(status in task_lower for status in ["menu", "file"]):
-                print("menu_bar")
                 hotspot_score = 0.8
             
             # Platform-specific navigation tasks
             if self.platform == Platform.ANDROID:
                 if hotspot_name == "back_button" and any(nav in task_lower for nav in ["back", "previous"]):
-                    print("android back_button")
                     hotspot_score = 0.9
                 elif hotspot_name == "menu_button" and any(nav in task_lower for nav in ["menu", "options"]):
-                    print("android menu_button")
                     hotspot_score = 0.8
                 elif hotspot_name == "fab" and any(nav in task_lower for nav in ["add", "create"]):
-                    print("android fab")
                     hotspot_score = 0.8
                 elif hotspot_name.startswith("bottom_nav") and any(nav in task_lower for nav in ["home", "search", "profile"]):
-                    print(f"android {hotspot_name}")
                     hotspot_score = 0.7
             
             elif self.platform == Platform.IOS:
@@ -636,9 +624,9 @@ class UIAttentionPredictor:
             # Non-tech savvy users: visual attraction matters more
             if self.tech_savviness >= 7:
                 final_score = (
-                    position_score * 0.4 +
-                    task_score * 0.4 +
-                    visual_score * 0.2
+                    position_score * 0.3 +
+                    task_score * 0.6 +
+                    visual_score * 0.1
                 )
             elif self.tech_savviness <= 3:
                 final_score = (
@@ -648,9 +636,9 @@ class UIAttentionPredictor:
                 )
             else:  # Medium tech savviness
                 final_score = (
-                    position_score * 0.33 +
-                    task_score * 0.33 +
-                    visual_score * 0.34
+                    position_score * 0.4 +
+                    task_score * 0.4 +
+                    visual_score * 0.2
                 )
             
             attention_points.append({
@@ -838,17 +826,14 @@ class UIAttentionPredictor:
 
     def _merge_close_points(self, attention_points: List[Dict]) -> List[Dict]:
         """
-        Merge attention points that are close to each other.
-        
-        Args:
-            attention_points: List of attention point dictionaries
-            distance_threshold: Maximum normalized distance to consider points as "close"
-            
-        Returns:
-            List of merged attention points
+        Merge attention points that are close to each other, prioritizing UI elements.
+        Each point can merge with at most 2 nearest neighbors, using diminishing returns
+        for score combination.
         """
-        # Sort points by score in descending order
-        sorted_points = sorted(attention_points, key=lambda x: x["scores"], reverse=True)
+        def sort_key(point):
+            return (point["candidate_type"] == "ui_element", point["scores"])
+        
+        sorted_points = sorted(attention_points, key=sort_key, reverse=True)
         merged_points = []
         skip_indices = set()
         distance_threshold = self.distance_threshold.get(self.platform, 0.05)
@@ -859,22 +844,44 @@ class UIAttentionPredictor:
             
             # Get current point position
             x1, y1 = point["position"]
-            merged_score = point["scores"]
+            base_score = point["scores"]
             
-            # Find all close points
-            close_points = []
-            for j, other_point in enumerate(sorted_points[i+1:], start=i+1):
-                x2, y2 = other_point["position"]
+            # Find all close points and their distances
+            nearby_points = []
+            for j, other_point in enumerate(sorted_points[i+1:]):
+                if (i + 1 + j) in skip_indices:
+                    continue
                 
-                # Calculate distance between points
+                x2, y2 = other_point["position"]
                 distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
                 
                 if distance <= distance_threshold:
-                    merged_score += other_point["scores"]
-                    close_points.append(j)
-                    skip_indices.add(j)
+                    nearby_points.append((distance, j, other_point))
             
-            # Create merged point with combined score
+            # Sort by distance and take at most 2 nearest points
+            nearby_points.sort(key=lambda x: x[0])  # Sort by distance
+            close_points = nearby_points[:2]  # Take at most 2 nearest points
+            
+            # Calculate merged score with diminishing returns
+            if close_points:
+                # Sort all scores (including base_score) in descending order
+                all_scores = sorted([base_score] + [p[2]["scores"] for p in close_points], reverse=True)
+                merged_score = all_scores[0]  # Start with highest score
+                
+                # Add diminishing contributions from other scores
+                for idx, score in enumerate(all_scores[1:]):
+                    # Each additional score contributes less
+                    # 2nd score adds 10%, 3rd adds 5%
+                    contribution = score * (0.1 / (2 ** idx))
+                    merged_score += contribution
+                
+                # Mark points as used
+                for _, j, _ in close_points:
+                    skip_indices.add(i + 1 + j)
+            else:
+                merged_score = base_score
+            
+            # Create merged point
             merged_point = point.copy()
             merged_point["scores"] = merged_score
             
