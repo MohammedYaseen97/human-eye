@@ -202,8 +202,8 @@ class UIPredictor:
 
 if __name__ == "__main__":
     predictor = UIPredictor()
-    image = Image.open("images/android_home.jpg")
-    for step in predictor.predict(image, 25, Platform.ANDROID, "find the battery icon", 9, debug=True):
+    image = Image.open("images/ios_home.png")
+    for step in predictor.predict(image, 25, Platform.IOS, "find the time", 9, debug=True):
         if step["status"] == "error":
             print(step["message"])
             print(step["traceback"])

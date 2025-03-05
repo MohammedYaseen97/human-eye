@@ -179,6 +179,8 @@ def create_spatial_grid(elements):
 def z_scan_pattern(elements_ref, last_element, debug):
     if not last_element:
         # Start from top-left
+        if debug:
+            print("Starting from top-left element: 0, 0")
         return min(elements_ref, key=lambda x: (x["position"][1], x["position"][0]))
     
     spatial_grid = create_spatial_grid(elements_ref)
@@ -202,30 +204,28 @@ def z_scan_pattern(elements_ref, last_element, debug):
             print("current_row_idx is None")
         return None
     
+    if debug:
+        print(f"moving in z-pattern: {current_row_idx}, {current_col_idx} ->", end=" ")
     # Z-pattern movement
     if current_row_idx % 2 == 0:  # Moving right
-        if debug:
-            print(f"length of current row: {len(spatial_grid[current_row_idx])}, moving right")
         if current_col_idx < len(spatial_grid[current_row_idx]) - 1:
             if debug:
-                print(f"moving right, next element: {current_row_idx}, {current_col_idx + 1}")
+                print(f"{current_row_idx}, {current_col_idx + 1}")
             return spatial_grid[current_row_idx][current_col_idx + 1]
         elif current_row_idx < len(spatial_grid) - 1:
             # Move to next row, starting from right
             if debug:
-                print(f"last element, moving down, next element: {current_row_idx + 1}, {current_col_idx - 1}")
+                print(f"{current_row_idx + 1}, {len(spatial_grid[current_row_idx + 1]) - 1}")
             return spatial_grid[current_row_idx + 1][-1]
     else:  # Moving left
-        if debug:
-            print(f"length of current row: {len(spatial_grid[current_row_idx])}, moving left")
         if current_col_idx > 0:
             if debug:
-                print(f"moving left, next element: {current_row_idx}, {current_col_idx - 1}")
+                print(f"{current_row_idx}, {current_col_idx - 1}")
             return spatial_grid[current_row_idx][current_col_idx - 1]
         elif current_row_idx < len(spatial_grid) - 1:
             # Move to next row, starting from left
             if debug:
-                print(f"last element, moving down, next element: {current_row_idx + 1}, 0")
+                print(f"{current_row_idx + 1}, 0")
             return spatial_grid[current_row_idx + 1][0]
     
     return None
@@ -245,61 +245,50 @@ def f_scan_pattern(elements_ref, last_element, debug):
     
     if not last_element:
         if debug:
-            print("Starting from top-left element")
+            print("Starting from top-left element: 0, 0")
         return min(elements_ref, key=lambda x: (x["position"][1], x["position"][0]))
     
     spatial_grid = create_spatial_grid(elements_ref)
     current_row_idx, current_col_idx = find_current_position(last_element, spatial_grid)
     
-    if debug:
-        print(f"\nCurrent position: Row {current_row_idx}, Column {current_col_idx}")
-    
     if current_row_idx is None:
         if debug:
             print("Element not found in grid")
-        return None
+        return None    
+    
+    if debug:
+        print(f"Moving in f-pattern: {current_row_idx}, {current_col_idx} ->", end=" ")
         
     # If not in first column, chance to return to first columns
     if current_col_idx > 0:
         cols_in_row = len(spatial_grid[current_row_idx])
-        jump_probability = 1/(cols_in_row + 3)
-        if debug:
-            print(f"Not in first column. Chance to return to first columns: {jump_probability:.2f}")
-        
+        jump_probability = 1/(cols_in_row + 3)        
         if random.random() < jump_probability:
             target_col = random.randint(0, 1)
-            if debug:
-                print(f"Jumping back to column {target_col} in current row")
             if target_col < cols_in_row:
+                if debug:
+                    print(f"{current_row_idx}, {target_col}")
                 return spatial_grid[current_row_idx][target_col]
-            if debug:
-                print("Jump failed - target column doesn't exist")
     
     # If in first two columns of lower rows, chance to jump to top rows
     if current_row_idx > 1 and current_col_idx < 2:
         jump_probability = 1/(len(spatial_grid) + 4)
-        if debug:
-            print(f"In first two columns of lower row. Chance to jump to top rows: {jump_probability:.2f}")
         
         if random.random() < jump_probability:
             target_row = random.randint(0, 1)
-            if debug:
-                print(f"Jumping up to row {target_row}")
             if current_col_idx < len(spatial_grid[target_row]):
+                if debug:
+                    print(f"{target_row}, {current_col_idx}")
                 return spatial_grid[target_row][current_col_idx]
-            if debug:
-                print("Jump failed - target position doesn't exist")
     
     # Default sequential movement
-    if debug:
-        print("\nAttempting sequential movement:")
     if current_col_idx < len(spatial_grid[current_row_idx]) - 1:
         if debug:
-            print(f"Moving right to column {current_col_idx + 1}")
+            print(f"{current_row_idx}, {current_col_idx + 1}")
         return spatial_grid[current_row_idx][current_col_idx + 1]
     elif current_row_idx < len(spatial_grid) - 1:
         if debug:
-            print(f"Moving to next row {current_row_idx + 1}, column 0")
+            print(f"{current_row_idx + 1}, 0")
         return spatial_grid[current_row_idx + 1][0]
     
     if debug:
@@ -333,27 +322,26 @@ def layered_scan_pattern(elements_ref, last_element, debug, layer_size=2):
             print("current_row_idx is None")
         return None
     
+    if debug:
+        print(f"Moving in layered pattern: {current_row_idx}, {current_col_idx} ->", end=" ")
+    
     # Determine which layer we're in
     current_layer = current_row_idx // layer_size
     layer_start = current_layer * layer_size
     layer_end = min(layer_start + layer_size, len(spatial_grid))
     
-    if debug:
-        print(f"\nCurrent position: Row {current_row_idx}, Col {current_col_idx}")
-        print(f"Currently in Layer {current_layer} (Rows {layer_start}-{layer_end-1})")
-    
     # Scan within current layer
     if current_col_idx < len(spatial_grid[current_row_idx]) - 1:
         if debug:
-            print(f"Moving right within layer {current_layer}")
+            print(f"{current_row_idx}, {current_col_idx + 1}")
         return spatial_grid[current_row_idx][current_col_idx + 1]
     elif current_row_idx < layer_end - 1:
         if debug:
-            print(f"Moving to start of next row within layer {current_layer}")
+            print(f"{current_row_idx + 1}, 0")
         return spatial_grid[current_row_idx + 1][0]
     elif layer_end < len(spatial_grid):
         if debug:
-            print(f"Layer {current_layer} complete! Moving to next layer...")
+            print(f"{layer_end}, 0")
         return spatial_grid[layer_end][0]
     
     if debug:

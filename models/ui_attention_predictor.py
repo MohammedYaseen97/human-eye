@@ -837,11 +837,13 @@ class UIAttentionPredictor:
         
         sorted_points = sorted(attention_points, key=sort_key, reverse=True)
         merged_points = []
-        skip_indices = set()
+        processed_ids = set()  # Track processed points by element_id
         distance_threshold = self.distance_threshold.get(self.platform, 0.05)
         
         for i, point in enumerate(sorted_points):
-            if i in skip_indices:
+            # Skip if this point's id has already been processed
+            point_id = point.get("element_id", f"hotspot_{i}")  # Fallback for hotspots
+            if point_id in processed_ids:
                 continue
             
             # Get current point position
@@ -851,14 +853,15 @@ class UIAttentionPredictor:
             # Find all close points and their distances
             nearby_points = []
             for j, other_point in enumerate(sorted_points[i+1:]):
-                if (i + 1 + j) in skip_indices:
+                other_id = other_point.get("element_id", f"hotspot_{i+1+j}")
+                if other_id in processed_ids:
                     continue
                 
                 x2, y2 = other_point["position"]
                 distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
                 
                 if distance <= distance_threshold:
-                    nearby_points.append((distance, j, other_point))
+                    nearby_points.append((distance, other_point, other_id))
             
             # Sort by distance and take at most 2 nearest points
             nearby_points.sort(key=lambda x: x[0])  # Sort by distance
@@ -867,7 +870,7 @@ class UIAttentionPredictor:
             # Calculate merged score with diminishing returns
             if close_points:
                 # Sort all scores (including base_score) in descending order
-                all_scores = sorted([base_score] + [p[2]["scores"] for p in close_points], reverse=True)
+                all_scores = sorted([base_score] + [p[1]["scores"] for p in close_points], reverse=True)
                 merged_score = all_scores[0]  # Start with highest score
                 
                 # Add diminishing contributions from other scores
@@ -877,9 +880,9 @@ class UIAttentionPredictor:
                     contribution = score * (0.1 / (2 ** idx))
                     merged_score += contribution
                 
-                # Mark points as used
-                for _, j, _ in close_points:
-                    skip_indices.add(i + 1 + j)
+                # Mark all merged points as processed
+                for _, _, other_id in close_points:
+                    processed_ids.add(other_id)
             else:
                 merged_score = base_score
             
@@ -891,9 +894,11 @@ class UIAttentionPredictor:
             if close_points:
                 merged_point["reasoning"] += f" (Combined with {len(close_points)} nearby points)"
             
+            # Mark current point as processed
+            processed_ids.add(point_id)
             merged_points.append(merged_point)
         
-        return merged_points
+        return sorted(merged_points, key=lambda x: x["scores"], reverse=True)
 
 
 # Example usage:
