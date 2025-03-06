@@ -12,6 +12,7 @@ from models.ui_attention_predictor import Platform
 from pydantic import BaseModel
 from typing import Optional
 import traceback
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -39,6 +40,10 @@ app.add_middleware(
 # Initialize the predictor
 predictor = UIPredictor()
 
+# In api.py, add logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 class PredictionRequest(BaseModel):
     age: int
     platform: str
@@ -60,9 +65,11 @@ async def predict_attention(
     platform: str = "desktop",
     debug: bool = False
 ):
+    logger.debug(f"Received request with platform: {platform}")
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
+        logger.debug("Image loaded successfully")
         
         # Make prediction with platform parameter   
         async def generate():

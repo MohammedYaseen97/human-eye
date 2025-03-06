@@ -32,6 +32,9 @@ export default function Home() {
   const handleSubmit = async () => {
     if (!image) return;
 
+    console.log('API URL', process.env.NEXT_PUBLIC_API_URL);
+    console.log('Making request to', `${process.env.NEXT_PUBLIC_API_URL}/predict`);
+
     // Cancel any existing request
     if (currentRequest) {
       currentRequest.abort();
