@@ -2,17 +2,17 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
 from PIL import Image
 import io
 import base64
-import json
 from models.predictor import UIPredictor
 from models.ui_attention_predictor import Platform
-from pydantic import BaseModel
-from typing import Optional
-import traceback
 import logging
+
+# Setup logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -26,12 +26,7 @@ app = FastAPI(title="UI Attention Predictor API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Local frontend
-        "http://localhost:8000",  # Local backend
-        "https://human-eye.vercel.app/",
-        "https://2feb-49-43-243-142.ngrok-free.app"
-    ],
+    allow_origins=["*"],  # Allow all origins for now
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,22 +34,6 @@ app.add_middleware(
 
 # Initialize the predictor
 predictor = UIPredictor()
-
-# In api.py, add logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-class PredictionRequest(BaseModel):
-    age: int
-    platform: str
-    task: str
-    tech_saviness: int
-    debug: Optional[bool] = False
-
-def image_to_base64(image: Image.Image) -> str:
-    buffered = io.BytesIO()
-    image.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
 
 @app.post("/predict")
 async def predict_attention(
@@ -65,42 +44,27 @@ async def predict_attention(
     platform: str = "desktop",
     debug: bool = False
 ):
-    logger.debug(f"Received request with platform: {platform}")
+    logger.info(f"Received request - Platform: {platform}, Age: {age}, Task: {task}")
+    
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
         logger.debug("Image loaded successfully")
         
-        # Make prediction with platform parameter   
-        async def generate():
-            try:
-                for result in predictor.predict(
-                    image=image,
-                    age=age,
-                    platform=Platform(platform),
-                    task=task,
-                    tech_saviness=tech_saviness,
-                    debug=debug
-                ):
-                    if isinstance(result, dict):
-                        yield f"data: {json.dumps(result)}\n\n"
-            except Exception as e:
-                error_data = {
-                    "status": "error",
-                    "message": str(e),
-                    "traceback": traceback.format_exc()
-                }
-                yield f"data: {json.dumps(error_data)}\n\n"
-
-        return StreamingResponse(
-            generate(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Content-Type": "text/event-stream"
-            }
-        )
+        final_result = None
+        # Just iterate through and keep the last one
+        for result in predictor.predict(
+            image=image,
+            age=age,
+            platform=Platform(platform.upper()),
+            task=task,
+            tech_saviness=tech_saviness,
+            debug=debug
+        ):
+            final_result = result
+        
+        # Return only the final result
+        return JSONResponse(content=final_result)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -9,19 +9,6 @@ type ReadResult = {
   value: Uint8Array | undefined;
 };
 
-const log = (...args: any[]) => {
-  // Keep console.log for local development
-  console.log(...args);
-  // Add Vercel logging
-  if (process.env.VERCEL) {
-    // @ts-ignore
-    if (window?.console?.debug) {
-      // @ts-ignore
-      window.console.debug(...args);
-    }
-  }
-};
-
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [streamImage, setStreamImage] = useState<string | null>(null);
@@ -51,9 +38,6 @@ export default function Home() {
   const handleSubmit = async () => {
     if (!image) return;
 
-    // Force log through error
-    throw new Error(`Debug: API URL is ${process.env.NEXT_PUBLIC_API_URL}`);
-
     // Cancel any existing request
     if (currentRequest) {
       currentRequest.abort();
@@ -64,10 +48,13 @@ export default function Home() {
     setCurrentRequest(abortController);
     setLoading(true);
     setError(null);
-    setStreamImage(null); // Clear previous image
+    setStreamImage(null);
 
     try {
+      // Prepare form data
       const formData = new FormData();
+      // Ensure image exists (TypeScript check)
+      if (!image) return;
       const imageBlob = await fetch(image).then(r => r.blob());
       formData.append('file', imageBlob, 'image.png');
       formData.append('age', params.age.toString());
@@ -75,60 +62,34 @@ export default function Home() {
       formData.append('tech_saviness', params.techSaviness.toString());
       formData.append('platform', params.platform);
 
-      // Default to localhost if env var is not set
+      // Make the request
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      console.log('Making request to:', `${apiUrl}/predict`);
       
       const response = await fetch(`${apiUrl}/predict`, {
         method: 'POST',
         body: formData,
-        signal: abortController.signal,
-        headers: {
-          'Connection': 'keep-alive',
-          'Keep-Alive': 'timeout=60'
-        }
+        signal: abortController.signal
       });
 
-      // Force log through error
-      throw new Error(`Debug: Response status ${response.status}, headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
-
+      // Handle response
       if (!response.ok) {
         const errorText = await response.text();
-        log('Error response:', errorText);
         throw new Error(`Prediction failed: ${errorText}`);
       }
 
-      // Try to get the raw text first to debug
-      const rawText = await response.text();
-      log('Raw response text:', rawText);
-
-      // If we see the data, then we can implement proper streaming
-      // For now, let's try to parse what we got
-      try {
-        const lines = rawText.split('\n\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const jsonData = JSON.parse(line.slice(6));
-            log('Parsed data:', jsonData);
-            
-            if (jsonData.status === 'error') {
-              setError(jsonData.message);
-              break;
-            }
-
-            if (jsonData.timestep) {
-              setStreamImage(jsonData.timestep);
-            }
-          }
-        }
-      } catch (err) {
-        log('Error parsing response:', err);
-        setError('Error parsing response');
+      // Parse and handle the result
+      const result = await response.json();
+      if (result.timestep) {
+        setStreamImage(result.timestep);
       }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        log('Request was cancelled');
+
+    } catch (err) {
+      const error = err as Error;
+      if (error.name === 'AbortError') {
+        console.log('Request was cancelled');
       } else {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        setError(error.message || 'An error occurred');
       }
     } finally {
       setLoading(false);
