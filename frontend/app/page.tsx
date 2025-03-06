@@ -63,6 +63,9 @@ export default function Home() {
       const response = await fetch(`${apiUrl}/predict`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'Accept': 'application/json',
+        },
         signal: abortController.signal
       });
 

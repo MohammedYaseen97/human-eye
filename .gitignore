@@ -5,3 +5,4 @@ models/weights/
 *.pyc
 *.deb
 .env
+nohup.out

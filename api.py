@@ -1,3 +1,4 @@
+from asyncio import Task
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -37,12 +38,12 @@ predictor = UIPredictor()
 
 @app.post("/predict")
 async def predict_attention(
+    age: int,
+    task: str,
+    tech_saviness: int,
+    platform: str,
     file: UploadFile = File(...),
-    age: int = 25,
-    task: str = "find settings",
-    tech_saviness: int = 3,
-    platform: str = "desktop",
-    debug: bool = False
+    debug: bool = False,
 ):
     print("\n=== RECEIVED REQUEST ===")
     print(f"Age: {age}")
@@ -50,7 +51,6 @@ async def predict_attention(
     print(f"Tech Saviness: {tech_saviness}")
     print(f"Platform: {platform}")
     print("======================\n")
-    time.sleep(10)
 
     try:
         contents = await file.read()
