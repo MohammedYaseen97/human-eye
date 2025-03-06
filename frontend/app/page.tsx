@@ -54,7 +54,7 @@ export default function Home() {
       formData.append('age', params.age.toString());
       formData.append('task', params.task);
       formData.append('tech_saviness', params.techSaviness.toString());
-      formData.append('platform', params.platform);
+      formData.append('platform', params.platform.toLowerCase());
 
       // Make the request
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';

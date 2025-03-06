@@ -56,14 +56,13 @@ async def predict_attention(
         for result in predictor.predict(
             image=image,
             age=age,
-            platform=Platform(platform.upper()),
+            platform=Platform(platform),
             task=task,
             tech_saviness=tech_saviness,
             debug=debug
         ):
             final_result = result
         
-        # Return only the final result
         return JSONResponse(content=final_result)
 
     except Exception as e:
