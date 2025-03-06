@@ -4,6 +4,9 @@ import torch
 import torch.nn as nn
 from models.ui_attention_predictor import Platform
 import matplotlib.pyplot as plt
+import io
+import base64
+from openai import OpenAI
 
 cos = nn.CosineSimilarity(dim=0, eps=1e-8)
 
@@ -40,33 +43,7 @@ def validate_inputs(age: int, platform: str, task: str, tech_saviness: int) -> b
     except:
         return False
 
-def caption_single_image(cropped_image, model, processor, prompt=None):
-    if not prompt:
-        if 'florence' in model.config.name_or_path:
-            prompt = "<CAPTION>"
-        else:
-            prompt = "The image shows"
-            
-    device = model.device
-    if model.device.type == 'cuda':
-        inputs = processor(images=cropped_image, text=prompt, return_tensors="pt", do_resize=False).to(device=device, dtype=torch.float16)
-    else:
-        inputs = processor(images=cropped_image, text=prompt, return_tensors="pt").to(device=device)
-    if 'florence' in model.config.name_or_path:
-        generated_ids = model.generate(input_ids=inputs["input_ids"],pixel_values=inputs["pixel_values"],max_new_tokens=20,num_beams=1, do_sample=False)
-    else:
-        generated_ids = model.generate(**inputs, max_length=100, num_beams=5, no_repeat_ngram_size=2, early_stopping=True, num_return_sequences=1)
-    generated_text = processor.decode(generated_ids[0], skip_special_tokens=True)
-    
-    return generated_text.strip()
-
-
-def evaluate_cropped_icon(model, processor, embed_model, cropped_icon, task_description, threshold=0.4):
-    prompt = "List the UI elements in this image in less than 10 words."
-    
-    cropped_icon = cropped_icon.convert('RGB')
-    cropped_icon.resize((64, 64), resample=Image.Resampling.LANCZOS)
-    
+def caption_single_image(image, model, processor, prompt="List the UI elements in this image in less than 10 words."):
     if not prompt:
         if 'florence' in model.config.name_or_path:
             prompt = "<CAPTION>"
@@ -77,9 +54,9 @@ def evaluate_cropped_icon(model, processor, embed_model, cropped_icon, task_desc
     
     # Process single image
     if model.device.type == 'cuda':
-        inputs = processor(images=cropped_icon, text=prompt, return_tensors="pt", do_resize=False).to(device=device, dtype=torch.float16)
+        inputs = processor(images=image, text=prompt, return_tensors="pt", do_resize=False).to(device=device, dtype=torch.float16)
     else:
-        inputs = processor(images=cropped_icon, text=prompt, return_tensors="pt").to(device=device)
+        inputs = processor(images=image, text=prompt, return_tensors="pt").to(device=device)
     
     if 'florence' in model.config.name_or_path:
         generated_ids = model.generate(
@@ -100,6 +77,13 @@ def evaluate_cropped_icon(model, processor, embed_model, cropped_icon, task_desc
         )
     
     caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+    return caption
+
+def evaluate_cropped_icon(model, processor, embed_model, cropped_icon, task_description, threshold=0.4):
+    cropped_icon = cropped_icon.convert('RGB')
+    cropped_icon.resize((64, 64), resample=Image.Resampling.LANCZOS)
+    
+    caption = caption_single_image(cropped_icon, model, processor)
     
     embeddings = embed_model.encode([caption, task_description], convert_to_tensor=True)
     print(f"caption: {caption}, task_description: {task_description}")
@@ -375,3 +359,67 @@ def display_image(image: Image.Image, jup=True):
     plt.axis('off')
     plt.show(block=True)  # This will block until the window is closed
     plt.close()  # Explicitly close the figure
+
+def detect_platform(image_path: str) -> str:
+    """
+    Detect the platform (Desktop/iOS/Android) from an image using vLLM hosted model
+    
+    Args:
+        image_path: Path to the image file
+    
+    Returns:
+        str: Detected platform
+    """
+    # Initialize OpenAI client pointing to local vLLM server
+    client = OpenAI(
+        base_url="http://localhost:6969/v1",  # Adjust port if needed
+        api_key="dummy-key"  # vLLM doesn't check API keys
+    )
+
+    # Encode image to base64
+    with Image.open(image_path) as img:
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG")
+        image_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+    # Prepare the prompt
+    prompt = """Analyze this UI screenshot and determine if it's from Desktop, iOS, or Android. 
+    Only respond with one word: 'DESKTOP', 'IOS', or 'ANDROID'. Nothing else."""
+
+    try:
+        response = client.chat.completions.create(
+            model="your-model-name",  # Replace with your actual model name
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=50,
+            temperature=0
+        )
+        
+        platform = response.choices[0].message.content.strip().upper()
+        
+        # Validate response
+        if platform not in ['DESKTOP', 'IOS', 'ANDROID']:
+            raise ValueError(f"Invalid platform detection: {platform}")
+            
+        return platform.lower()
+
+    except Exception as e:
+        print(f"Error detecting platform: {str(e)}")
+        raise

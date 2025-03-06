@@ -25,7 +25,12 @@ app = FastAPI(title="UI Attention Predictor API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
+    allow_origins=[
+        "http://localhost:3000",  # Local frontend
+        "http://localhost:8000",  # Local backend
+        "https://your-vercel-app.vercel.app",  # Production frontend (when you deploy)
+        "https://your-custom-domain.com"        # If you have a custom domain
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,7 +55,6 @@ def image_to_base64(image: Image.Image) -> str:
 async def predict_attention(
     file: UploadFile = File(...),
     age: int = 25,
-    platform: str = 'android',
     task: str = "find settings",
     tech_saviness: int = 3,
     debug: bool = False
@@ -59,26 +63,16 @@ async def predict_attention(
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
         
-        valid_platforms = [p.value for p in Platform]
-        if platform.lower() not in valid_platforms:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Platform must be one of: {', '.join(valid_platforms)}"
-            )
-        
-        platform_enum = Platform(platform.lower())
-
+        # Make prediction without platform parameter
         async def generate():
             try:
                 for result in predictor.predict(
                     image=image,
                     age=age,
-                    platform=platform_enum,
                     task=task,
                     tech_saviness=tech_saviness,
                     debug=debug
                 ):
-                    # Properly format as SSE
                     if isinstance(result, dict):
                         yield f"data: {json.dumps(result)}\n\n"
             except Exception as e:

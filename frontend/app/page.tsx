@@ -3,9 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 
-// Add this type definition
-type PlatformType = 'android' | 'ios' | 'desktop';
-
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [streamImage, setStreamImage] = useState<string | null>(null);
@@ -13,7 +10,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [params, setParams] = useState({
     age: 25,
-    platform: 'android' as PlatformType,
     task: 'find settings',
     techSaviness: 3,
   });
@@ -52,11 +48,13 @@ export default function Home() {
       const imageBlob = await fetch(image).then(r => r.blob());
       formData.append('file', imageBlob, 'image.png');
       formData.append('age', params.age.toString());
-      formData.append('platform', params.platform);
       formData.append('task', params.task);
       formData.append('tech_saviness', params.techSaviness.toString());
 
-      const response = await fetch('http://localhost:8000/predict', {
+      // Default to localhost if env var is not set
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      
+      const response = await fetch(`${apiUrl}/predict`, {
         method: 'POST',
         body: formData,
         signal: abortController.signal
@@ -136,39 +134,54 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Left Column - Input */}
           <div className="space-y-6 bg-gray-800 p-6 rounded-xl shadow-xl">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Upload UI Screenshot</label>
-                <div 
-                  className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageUpload}
+            {/* Image Upload */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Upload UI Screenshot</label>
+              <div 
+                className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+                {image ? (
+                  <Image
+                    src={image}
+                    alt="Preview"
+                    width={300}
+                    height={300}
+                    className="mx-auto rounded-lg"
                   />
-                  {image ? (
-                    <Image
-                      src={image}
-                      alt="Preview"
-                      width={300}
-                      height={300}
-                      className="mx-auto rounded-lg"
-                    />
-                  ) : (
-                    <div className="text-gray-400">
-                      <svg className="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p>Click to upload an image</p>
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <div className="text-gray-400">
+                    <svg className="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p>Click to upload an image</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Parameters Section */}
+            <div className="space-y-4">
+              {/* Task Input */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Task Description</label>
+                <input
+                  type="text"
+                  value={params.task}
+                  onChange={(e) => setParams({ ...params, task: e.target.value })}
+                  className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., find settings"
+                />
               </div>
 
+              {/* Age and Tech Savviness in a row */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Age</label>
@@ -180,44 +193,23 @@ export default function Home() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Platform</label>
-                  <select
-                    value={params.platform}
-                    onChange={(e) => setParams({ ...params, platform: e.target.value as PlatformType })}
-                    className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="android">Android</option>
-                    <option value="ios">iOS</option>
-                    <option value="desktop">Desktop</option>
-                  </select>
+                  <label className="block text-sm font-medium mb-2">Tech Savviness</label>
+                  <div className="space-y-2">
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={params.techSaviness}
+                      onChange={(e) => setParams({ ...params, techSaviness: parseInt(e.target.value) })}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                    <div className="text-center text-sm">{params.techSaviness}/10</div>
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Task</label>
-                <input
-                  type="text"
-                  value={params.task}
-                  onChange={(e) => setParams({ ...params, task: e.target.value })}
-                  className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., find settings"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Tech Savviness (1-10)</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={params.techSaviness}
-                  onChange={(e) => setParams({ ...params, techSaviness: parseInt(e.target.value) })}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                />
-                <div className="text-center mt-2">{params.techSaviness}</div>
               </div>
             </div>
 
+            {/* Submit Button */}
             <button
               onClick={handleSubmit}
               disabled={!image || loading}

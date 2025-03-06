@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 from models.ui_attention_predictor import Platform, UIAttentionPredictor
 from models.eye_pattern import EyePatternPredictor
-from models.utils import evaluate_cropped_icon, draw_attention, find_next_element_scan, display_image
+from models.utils import evaluate_cropped_icon, draw_attention, find_next_element_scan, display_image, detect_platform
 from models.op_utils.omniparser import Omniparser
 
 from sentence_transformers import SentenceTransformer
@@ -45,12 +45,15 @@ class UIPredictor:
         )
         
         
-    def predict(self, image: Image.Image, age: int, platform: str, task: str, tech_saviness: int, debug: bool = False):
+    def predict(self, image: Image.Image, age: int, task: str, tech_saviness: int, debug: bool = False):
         """
         Main prediction function that streams timesteps and handles failures
         """
         try:
             eye_pattern = self.eye_pattern_predictor.predict(age)
+            
+            platform = detect_platform(image)
+            time.sleep(1)
             
             # Initial parsing
             _, parsed_content_list = self.omniparser.parse(image)
@@ -122,7 +125,9 @@ class UIPredictor:
         last_element = None
         scan = False
         delay = float(os.getenv('TIMESTEP_DELAY', 0.5))
+        last_image = image
         
+        timestep_count = 0  # Add a counter to track timesteps
         while elements:
             print("#########################")
             curr_window = elements[:5]
@@ -157,7 +162,13 @@ class UIPredictor:
             
             print(f"\nhighlighted element: {json.dumps(element, indent=4)}")
             
-            highlighted_image = draw_attention(element, image, alpha=0.9)
+            # Calculate opacity - earlier timesteps will be more opaque
+            opacity = max(0.2, 0.9 * (1 - (timestep_count * 0.1)))  # Starts at 0.9, decreases by 0.09 each step, min 0.2
+            
+            print(f"Drawing attention with opacity: {opacity}")
+            highlighted_image = draw_attention(element, last_image, alpha=opacity)
+            
+            timestep_count += 1  # Increment counter
             
             image_width, image_height = image.size
             x, y = element["position"]
@@ -222,6 +233,7 @@ class UIPredictor:
             
             print("task not completed, element not found..")
             last_element = element
+            last_image = highlighted_image
             
             time.sleep(delay)
             
@@ -230,6 +242,7 @@ class UIPredictor:
                 "status": "success",
                 "timestep": image_to_base64(highlighted_image)
             }
+
 
 
 if __name__ == "__main__":
