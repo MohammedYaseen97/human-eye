@@ -3,6 +3,12 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 
+// First, define the type for the reader result
+type ReadResult = {
+  done: boolean;
+  value: Uint8Array | undefined;
+};
+
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [streamImage, setStreamImage] = useState<string | null>(null);
@@ -62,50 +68,88 @@ export default function Home() {
       const response = await fetch(`${apiUrl}/predict`, {
         method: 'POST',
         body: formData,
-        signal: abortController.signal
+        signal: abortController.signal,
+        headers: {
+          'Connection': 'keep-alive',
+          'Keep-Alive': 'timeout=60'
+        }
       });
 
-      if (!response.ok) throw new Error('Prediction failed');
+      if (!response.ok) {
+        const errorText = await response.text();  // Add this to see the error
+        console.error('Error response:', errorText);
+        throw new Error(`Prediction failed: ${errorText}`);
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No reader available');
+
+      // Then modify the readWithTimeout function
+      const readWithTimeout = async (reader: ReadableStreamDefaultReader, timeout: number): Promise<ReadResult> => {
+        const timeoutPromise = new Promise<ReadResult>((_, reject) => {
+          setTimeout(() => reject(new Error('Stream timeout')), timeout);
+        });
+        
+        try {
+          const result = await Promise.race([reader.read(), timeoutPromise]);
+          // Ensure the result matches our ReadResult type
+          return {
+            done: result.done,
+            value: result.value
+          };
+        } catch (error) {
+          if (error instanceof Error && error.message === 'Stream timeout') {
+            throw new Error('Stream reading timed out');
+          }
+          throw error;
+        }
+      };
 
       // Buffer to hold partial chunks
       let buffer = '';
 
       // Read the stream
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        try {
+          const { done, value } = await readWithTimeout(reader, 10000);
+          if (done) break;
 
-        // Convert chunk to text and add to buffer
-        const text = new TextDecoder().decode(value);
-        buffer += text;
+          // Convert chunk to text and add to buffer
+          const text = new TextDecoder().decode(value);
+          buffer += text;
 
-        // Process complete messages from buffer
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || ''; // Keep the last incomplete chunk in buffer
+          // Process complete messages from buffer
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || ''; // Keep the last incomplete chunk in buffer
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const jsonData = JSON.parse(line.slice(6));
-              
-              if (jsonData.status === 'error') {
-                setError(jsonData.message);
-                break;
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonData = JSON.parse(line.slice(6));
+                
+                if (jsonData.status === 'error') {
+                  setError(jsonData.message);
+                  break;
+                }
+
+                // Use requestAnimationFrame for smooth updates
+                if (jsonData.timestep) {
+                  requestAnimationFrame(() => {
+                    setStreamImage(jsonData.timestep);
+                  });
+                }
+              } catch {
+                console.log('Error parsing JSON from line:', line);
               }
-
-              // Use requestAnimationFrame for smooth updates
-              if (jsonData.timestep) {
-                requestAnimationFrame(() => {
-                  setStreamImage(jsonData.timestep);
-                });
-              }
-            } catch {
-              console.log('Error parsing JSON from line:', line);
             }
           }
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === 'AbortError') {
+            console.log('Request was cancelled');
+          } else {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+          }
+          break;
         }
       }
     } catch (err: unknown) {
