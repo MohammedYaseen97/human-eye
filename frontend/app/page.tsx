@@ -9,6 +9,19 @@ type ReadResult = {
   value: Uint8Array | undefined;
 };
 
+const log = (...args: any[]) => {
+  // Keep console.log for local development
+  console.log(...args);
+  // Add Vercel logging
+  if (process.env.VERCEL) {
+    // @ts-ignore
+    if (window?.console?.debug) {
+      // @ts-ignore
+      window.console.debug(...args);
+    }
+  }
+};
+
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [streamImage, setStreamImage] = useState<string | null>(null);
@@ -38,8 +51,8 @@ export default function Home() {
   const handleSubmit = async () => {
     if (!image) return;
 
-    console.log('API URL', process.env.NEXT_PUBLIC_API_URL);
-    console.log('Making request to', `${process.env.NEXT_PUBLIC_API_URL}/predict`);
+    // Force log through error
+    throw new Error(`Debug: API URL is ${process.env.NEXT_PUBLIC_API_URL}`);
 
     // Cancel any existing request
     if (currentRequest) {
@@ -75,86 +88,45 @@ export default function Home() {
         }
       });
 
+      // Force log through error
+      throw new Error(`Debug: Response status ${response.status}, headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+
       if (!response.ok) {
-        const errorText = await response.text();  // Add this to see the error
-        console.error('Error response:', errorText);
+        const errorText = await response.text();
+        log('Error response:', errorText);
         throw new Error(`Prediction failed: ${errorText}`);
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader available');
+      // Try to get the raw text first to debug
+      const rawText = await response.text();
+      log('Raw response text:', rawText);
 
-      // Then modify the readWithTimeout function
-      const readWithTimeout = async (reader: ReadableStreamDefaultReader, timeout: number): Promise<ReadResult> => {
-        const timeoutPromise = new Promise<ReadResult>((_, reject) => {
-          setTimeout(() => reject(new Error('Stream timeout')), timeout);
-        });
-        
-        try {
-          const result = await Promise.race([reader.read(), timeoutPromise]);
-          // Ensure the result matches our ReadResult type
-          return {
-            done: result.done,
-            value: result.value
-          };
-        } catch (error) {
-          if (error instanceof Error && error.message === 'Stream timeout') {
-            throw new Error('Stream reading timed out');
-          }
-          throw error;
-        }
-      };
+      // If we see the data, then we can implement proper streaming
+      // For now, let's try to parse what we got
+      try {
+        const lines = rawText.split('\n\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonData = JSON.parse(line.slice(6));
+            log('Parsed data:', jsonData);
+            
+            if (jsonData.status === 'error') {
+              setError(jsonData.message);
+              break;
+            }
 
-      // Buffer to hold partial chunks
-      let buffer = '';
-
-      // Read the stream
-      while (true) {
-        try {
-          const { done, value } = await readWithTimeout(reader, 10000);
-          if (done) break;
-
-          // Convert chunk to text and add to buffer
-          const text = new TextDecoder().decode(value);
-          buffer += text;
-
-          // Process complete messages from buffer
-          const lines = buffer.split('\n\n');
-          buffer = lines.pop() || ''; // Keep the last incomplete chunk in buffer
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const jsonData = JSON.parse(line.slice(6));
-                
-                if (jsonData.status === 'error') {
-                  setError(jsonData.message);
-                  break;
-                }
-
-                // Use requestAnimationFrame for smooth updates
-                if (jsonData.timestep) {
-                  requestAnimationFrame(() => {
-                    setStreamImage(jsonData.timestep);
-                  });
-                }
-              } catch {
-                console.log('Error parsing JSON from line:', line);
-              }
+            if (jsonData.timestep) {
+              setStreamImage(jsonData.timestep);
             }
           }
-        } catch (err: unknown) {
-          if (err instanceof Error && err.name === 'AbortError') {
-            console.log('Request was cancelled');
-          } else {
-            setError(err instanceof Error ? err.message : 'An error occurred');
-          }
-          break;
         }
+      } catch (err) {
+        log('Error parsing response:', err);
+        setError('Error parsing response');
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        console.log('Request was cancelled');
+        log('Request was cancelled');
       } else {
         setError(err instanceof Error ? err.message : 'An error occurred');
       }
