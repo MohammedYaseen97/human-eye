@@ -626,21 +626,21 @@ class UIAttentionPredictor:
             # Non-tech savvy users: visual attraction matters more
             if tech_savv >= 7:
                 final_score = (
-                    position_score * 0.2 +
-                    task_score * 0.7 +
-                    visual_score * 0.1
+                    position_score * 0.27 +
+                    task_score * 0.55 +
+                    visual_score * 0.18
                 )
             elif tech_savv <= 3:
                 final_score = (
-                    position_score * 0.2 +
-                    task_score * 0.2 +
-                    visual_score * 0.6
+                    position_score * 0.22 +
+                    task_score * 0.23 +
+                    visual_score * 0.55
                 )
             else:  # Medium tech savviness
                 final_score = (
-                    position_score * 0.4 +
-                    task_score * 0.4 +
-                    visual_score * 0.2
+                    position_score * 0.33 +
+                    task_score * 0.33 +
+                    visual_score * 0.34
                 )
             
             attention_points.append({

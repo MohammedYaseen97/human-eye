@@ -276,7 +276,7 @@ def f_scan_pattern(elements_ref, last_element, debug):
     # If not in first column, chance to return to first columns
     if current_col_idx > 0:
         cols_in_row = len(spatial_grid[current_row_idx])
-        jump_probability = 1/(cols_in_row + 3)        
+        jump_probability = 2/(cols_in_row + 3)        
         if random.random() < jump_probability:
             target_col = random.randint(0, 1)
             if target_col < cols_in_row:
@@ -286,7 +286,7 @@ def f_scan_pattern(elements_ref, last_element, debug):
     
     # If in first two columns of lower rows, chance to jump to top rows
     if current_row_idx > 1 and current_col_idx < 2:
-        jump_probability = 1/(len(spatial_grid) + 4)
+        jump_probability = 2/(len(spatial_grid) + 4)
         
         if random.random() < jump_probability:
             target_row = random.randint(0, 1)
@@ -362,13 +362,18 @@ def layered_scan_pattern(elements_ref, last_element, debug, layer_size=2):
         print("Reached end of grid!")
     return None
 
+def spotted_pattern(elements_ref, last_element, debug):
+    visual_elements = sorted(elements_ref, key=lambda x: x["component_scores"]["visual"], reverse=True)
+    if not last_element:
+        return visual_elements[0]
+    for i, element in enumerate(visual_elements):
+        if element["element_id"] == last_element["element_id"] and i < len(visual_elements) - 1:
+            return visual_elements[i+1]
+    return None
 
 def find_next_element_scan(elements_ref, pattern, last_element, debug=False):
     if pattern == "Spotted Pattern":
-        visual_elements = sorted(elements_ref, key=lambda x: x["scores"], reverse=True)
-        for i, element in enumerate(visual_elements):
-            if element["element_id"] == last_element["element_id"]:
-                return visual_elements[i+1]
+        return spotted_pattern(elements_ref, last_element, debug)
     elif pattern == "Z-Pattern":
         return z_scan_pattern(elements_ref, last_element, debug)
     elif pattern == "F-Pattern":

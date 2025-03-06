@@ -1,7 +1,7 @@
 from asyncio import Task
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
@@ -38,11 +38,11 @@ predictor = UIPredictor()
 
 @app.post("/predict")
 async def predict_attention(
-    age: int,
-    task: str,
-    tech_saviness: int,
-    platform: str,
     file: UploadFile = File(...),
+    age: int = Form(...),
+    task: str = Form(...),
+    tech_saviness: int = Form(...),
+    platform: str = Form(...),
     debug: bool = False,
 ):
     print("\n=== RECEIVED REQUEST ===")
