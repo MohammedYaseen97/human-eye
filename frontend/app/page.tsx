@@ -99,7 +99,7 @@ export default function Home() {
                   setStreamImage(jsonData.timestep);
                 });
               }
-            } catch (e) {
+            } catch {
               console.log('Error parsing JSON from line:', line);
             }
           }
