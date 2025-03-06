@@ -28,8 +28,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # Local frontend
         "http://localhost:8000",  # Local backend
-        "https://your-vercel-app.vercel.app",  # Production frontend (when you deploy)
-        "https://your-custom-domain.com"        # If you have a custom domain
+        "https://human-eye.vercel.app/",
+        "https://2feb-49-43-243-142.ngrok-free.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
