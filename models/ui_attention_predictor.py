@@ -626,8 +626,8 @@ class UIAttentionPredictor:
             # Non-tech savvy users: visual attraction matters more
             if tech_savv >= 7:
                 final_score = (
-                    position_score * 0.3 +
-                    task_score * 0.6 +
+                    position_score * 0.2 +
+                    task_score * 0.7 +
                     visual_score * 0.1
                 )
             elif tech_savv <= 3:

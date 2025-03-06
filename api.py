@@ -9,7 +9,7 @@ import base64
 from models.predictor import UIPredictor
 from models.ui_attention_predictor import Platform
 import logging
-
+import time
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -44,15 +44,20 @@ async def predict_attention(
     platform: str = "desktop",
     debug: bool = False
 ):
-    logger.info(f"Received request - Platform: {platform}, Age: {age}, Task: {task}")
-    
+    print("\n=== RECEIVED REQUEST ===")
+    print(f"Age: {age}")
+    print(f"Task: {task}")
+    print(f"Tech Saviness: {tech_saviness}")
+    print(f"Platform: {platform}")
+    print("======================\n")
+    time.sleep(10)
+
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
-        logger.debug("Image loaded successfully")
         
+        print("\n=== STARTING PREDICTION ===")
         final_result = None
-        # Just iterate through and keep the last one
         for result in predictor.predict(
             image=image,
             age=age,
@@ -62,7 +67,9 @@ async def predict_attention(
             debug=debug
         ):
             final_result = result
+            print("Got prediction result")
         
+        print("=== PREDICTION COMPLETE ===\n")
         return JSONResponse(content=final_result)
 
     except Exception as e:

@@ -9,9 +9,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [params, setParams] = useState({
-    age: 25,
-    task: 'find settings',
-    techSaviness: 3,
+    age: 0,
+    task: '',
+    techSaviness: 5,
     platform: 'desktop' as 'desktop' | 'ios' | 'android',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);

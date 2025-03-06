@@ -92,7 +92,41 @@ def evaluate_cropped_icon(model, processor, embed_model, cropped_icon, task_desc
     return similarity.item() > threshold
 
 
-def draw_attention(attention_point, ui_image, alpha=0.9) -> Image:
+def get_color_for_timestep(timestep, max_timesteps):
+    # Define key colors in RGB
+    colors = [
+        (255, 0, 0),      # Red
+        (255, 165, 0),    # Orange
+        (255, 255, 0),    # Yellow
+        (0, 255, 0),      # Green
+        (0, 0, 255),      # Blue
+        (128, 0, 128),    # Purple
+        (139, 69, 19),    # Brown
+        (0, 0, 0)         # Black
+    ]
+    
+    # Calculate which color pair we're between
+    num_transitions = len(colors) - 1
+    section_size = max_timesteps / num_transitions
+    
+    # Find current section and progress within that section
+    section = int(timestep / section_size)
+    section = min(section, num_transitions - 1)  # Clamp to avoid overflow
+    
+    progress = (timestep % section_size) / section_size
+    
+    # Get the two colors to interpolate between
+    color1 = colors[section]
+    color2 = colors[section + 1]
+    
+    # Interpolate between the two colors
+    r = int(color1[0] + (color2[0] - color1[0]) * progress)
+    g = int(color1[1] + (color2[1] - color1[1]) * progress)
+    b = int(color1[2] + (color2[2] - color1[2]) * progress)
+    
+    return (r, g, b, int(255 * 0.8))  # Keep alpha at 0.8
+
+def draw_attention(attention_point, ui_image, timestep_count, total_timesteps=100) -> Image:
     from PIL import Image, ImageDraw
         
     # Convert to RGBA if not already
@@ -116,13 +150,9 @@ def draw_attention(attention_point, ui_image, alpha=0.9) -> Image:
     px, py = norm_to_pixel(x, y)
     
     # Calculate radius based on image size (e.g., 10% of width)
-    radius = int(width * 0.1)
+    radius = int(width * 0.05)
     
-    # Color intensity based only on confidence
-    intensity = int(255 * alpha)
-    
-    # Choose color based on whether it's a hotspot or UI element
-    color = (0, 255, 0, intensity) if attention_point["candidate_type"] == "platform_hotspot" else (255, 0, 0, intensity)  # Green for hotspots, Red for UI elements
+    color = get_color_for_timestep(timestep_count, total_timesteps)  # You'll need to pass these parameters
     
     # Single solid circle for each attention point
     draw.ellipse(

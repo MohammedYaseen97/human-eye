@@ -117,8 +117,12 @@ class UIPredictor:
             img.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue()).decode()
             return f"data:image/png;base64,{img_str}"
+        
+        print(f"attention points:")
+        print(json.dumps(result["attention_distribution"], indent=4))
 
         elements_ref = result["attention_distribution"].copy()
+        len_elements_ref = len(elements_ref)
         elements = elements_ref.copy()
         last_element = None
         scan = False
@@ -161,10 +165,10 @@ class UIPredictor:
             print(f"\nhighlighted element: {json.dumps(element, indent=4)}")
             
             # Calculate opacity - earlier timesteps will be more opaque
-            opacity = max(0.2, 0.9 * (1 - (timestep_count * 0.1)))  # Starts at 0.9, decreases by 0.09 each step, min 0.2
+            opacity = max(0.2, 0.9 * (1 - (timestep_count * 00.1)))  # Starts at 0.9, decreases by 0.09 each step, min 0.2
             
             print(f"Drawing attention with opacity: {opacity}")
-            highlighted_image = draw_attention(element, last_image, alpha=opacity)
+            highlighted_image = draw_attention(element, last_image, timestep_count, len_elements_ref)
             
             timestep_count += 1  # Increment counter
             
