@@ -3,12 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 
-// First, define the type for the reader result
-type ReadResult = {
-  done: boolean;
-  value: Uint8Array | undefined;
-};
-
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [streamImage, setStreamImage] = useState<string | null>(null);
