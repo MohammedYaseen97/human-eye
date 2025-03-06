@@ -105,8 +105,8 @@ export default function Home() {
           }
         }
       }
-    } catch (err) {
-      if (err.name === 'AbortError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
         console.log('Request was cancelled');
       } else {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -124,7 +124,7 @@ export default function Home() {
         currentRequest.abort();
       }
     };
-  }, []);
+  }, [currentRequest]);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-8">
