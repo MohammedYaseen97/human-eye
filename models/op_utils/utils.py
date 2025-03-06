@@ -41,7 +41,7 @@ import re
 from torchvision.transforms import ToPILImage
 import supervision as sv
 import torchvision.transforms as T
-from op_utils.box_annotator import BoxAnnotator
+from models.op_utils.box_annotator import BoxAnnotator
 
 def get_caption_model_processor(model_name, model_name_or_path="Salesforce/blip2-opt-2.7b", device=None):
     if not device:
@@ -121,7 +121,6 @@ def get_parsed_content_icon(filtered_boxes, starting_idx, image_source, caption_
     return generated_texts
 
 
-
 def get_parsed_content_icon_phi3v(filtered_boxes, ocr_bbox, image_source, caption_model_processor):
     to_pil = ToPILImage()
     if ocr_bbox:
@@ -173,6 +172,7 @@ def get_parsed_content_icon_phi3v(filtered_boxes, ocr_bbox, image_source, captio
         generated_texts.extend(response)
 
     return generated_texts
+
 
 def remove_overlap(boxes, iou_threshold, ocr_bbox=None):
     assert ocr_bbox is None or isinstance(ocr_bbox, List)
@@ -397,11 +397,13 @@ def predict_yolo(model, image, box_threshold, imgsz, scale_img, iou_threshold=0.
 
     return boxes, conf, phrases
 
+
 def int_box_area(box, w, h):
     x1, y1, x2, y2 = box
     int_box = [int(x1*w), int(y1*h), int(x2*w), int(y2*h)]
     area = (int_box[2] - int_box[0]) * (int_box[3] - int_box[1])
     return area
+
 
 def get_som_labeled_img(image_source: Union[str, Image.Image], model=None, BOX_TRESHOLD=0.01, output_coord_in_ratio=False, ocr_bbox=None, text_scale=0.4, text_padding=5, draw_bbox_config=None, caption_model_processor=None, ocr_text=[], use_local_semantics=True, iou_threshold=0.9,prompt=None, scale_img=False, imgsz=None, batch_size=128):
     """Process either an image path or Image object
@@ -490,15 +492,18 @@ def get_xywh(input):
     x, y, w, h = int(x), int(y), int(w), int(h)
     return x, y, w, h
 
+
 def get_xyxy(input):
     x, y, xp, yp = input[0][0], input[0][1], input[2][0], input[2][1]
     x, y, xp, yp = int(x), int(y), int(xp), int(yp)
     return x, y, xp, yp
 
+
 def get_xywh_yolo(input):
     x, y, w, h = input[0], input[1], input[2] - input[0], input[3] - input[1]
     x, y, w, h = int(x), int(y), int(w), int(h)
     return x, y, w, h
+
 
 def check_ocr_box(image_source: Union[str, Image.Image], display_img = True, output_bb_format='xywh', goal_filtering=None, easyocr_args=None, use_paddleocr=False):
     if isinstance(image_source, str):

@@ -2,7 +2,7 @@ from PIL import Image
 import numpy as np
 import torch
 import torch.nn as nn
-from ui_attention_predictor import Platform
+from models.ui_attention_predictor import Platform
 import matplotlib.pyplot as plt
 
 cos = nn.CosineSimilarity(dim=0, eps=1e-8)

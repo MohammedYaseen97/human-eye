@@ -1,36 +1,48 @@
 import torch
 from PIL import Image
 import numpy as np
-from ui_attention_predictor import Platform, UIAttentionPredictor
-from eye_pattern import EyePatternPredictor
-from utils import evaluate_cropped_icon, draw_attention, find_next_element_scan, display_image
-from op_utils.omniparser import Omniparser
+from models.ui_attention_predictor import Platform, UIAttentionPredictor
+from models.eye_pattern import EyePatternPredictor
+from models.utils import evaluate_cropped_icon, draw_attention, find_next_element_scan, display_image
+from models.op_utils.omniparser import Omniparser
 
 from sentence_transformers import SentenceTransformer
 import json
 import traceback
 import matplotlib.pyplot as plt
 
+import os
+from dotenv import load_dotenv
+import asyncio
+import time
+import base64
+import io
+
+load_dotenv()
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class UIPredictor:
     def __init__(self):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.eye_pattern_predictor = EyePatternPredictor()
         self.ui_attention_predictor = UIAttentionPredictor()
 
         op_config = {
-            'som_model_path': 'models/weights/icon_detect/model.pt',
-            'caption_model_name': 'florence2',
-            'caption_model_path': 'models/weights/icon_caption_florence',
-            'BOX_TRESHOLD': 0.05,
+            'som_model_path': os.path.join(BASE_PATH, os.getenv('SOM_MODEL_PATH')),
+            'caption_model_name': os.getenv('CAPTION_MODEL_NAME', 'florence2'),
+            'caption_model_path': os.path.join(BASE_PATH, os.getenv('CAPTION_MODEL_PATH')),
+            'BOX_TRESHOLD': float(os.getenv('BOX_THRESHOLD', 0.05)),
         }
         self.omniparser = Omniparser(op_config)
 
-        self.confidence_threshold = 0.23
-        self.similarity_threshold = 0.4
+        self.confidence_threshold = float(os.getenv('CONFIDENCE_THRESHOLD', 0.23))
+        self.similarity_threshold = float(os.getenv('SIMILARITY_THRESHOLD', 0.4))
 
         # Load the model
-        self.embed_model = SentenceTransformer('all-MiniLM-L6-v2', device='cuda' if torch.cuda.is_available() else 'cpu')
+        self.embed_model = SentenceTransformer(
+            os.getenv('SENTENCE_TRANSFORMER_MODEL', 'all-MiniLM-L6-v2'),
+            device=self.device
+        )
         
         
     def predict(self, image: Image.Image, age: int, platform: str, task: str, tech_saviness: int, debug: bool = False):
@@ -80,28 +92,36 @@ class UIPredictor:
                 result,
                 debug
             ):
-                yield {
-                    "status": "success",
-                    "timestep": timestep  # Send individual timestep instead of full array
-                }
+                yield timestep
             
         except Exception as e:
+            print(f"Error in predict: {str(e)}")
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"Full traceback: {error_trace}")
             yield {
                 "status": "error", 
                 "message": str(e),
-                "traceback": traceback.format_exc()
+                "traceback": error_trace
             }
-            return  # Stop streaming on error
+            return
     
     def _generate_timesteps(self, platform, image, task, eye_pattern, result, debug):
         """
         Internal method to generate timesteps
         This is where your main notebook logic will go
         """
+        def image_to_base64(img):
+            buffered = io.BytesIO()
+            img.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            return f"data:image/png;base64,{img_str}"
+
         elements_ref = result["attention_distribution"].copy()
         elements = elements_ref.copy()
         last_element = None
         scan = False
+        delay = float(os.getenv('TIMESTEP_DELAY', 0.5))
         
         while elements:
             print("#########################")
@@ -192,12 +212,24 @@ class UIPredictor:
                 self.similarity_threshold
             ):
                 print("task completed, element found..")
+                time.sleep(delay)  # Keep consistent timing
+                yield {
+                    "status": "success",
+                    "timestep": image_to_base64(highlighted_image),
+                    "final": True  # Optional: tell frontend this is the last frame
+                }
                 break
             
             print("task not completed, element not found..")
             last_element = element
             
-            yield highlighted_image
+            time.sleep(delay)
+            
+            # Convert the image to base64 before yielding
+            yield {
+                "status": "success",
+                "timestep": image_to_base64(highlighted_image)
+            }
 
 
 if __name__ == "__main__":

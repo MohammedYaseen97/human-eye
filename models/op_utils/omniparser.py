@@ -1,8 +1,6 @@
-from op_utils.utils import get_som_labeled_img, get_caption_model_processor, get_yolo_model, check_ocr_box
+from models.op_utils.utils import get_som_labeled_img, get_caption_model_processor, get_yolo_model, check_ocr_box
 import torch
 from PIL import Image
-import io
-import base64
 from typing import Dict
 
 class Omniparser(object):
