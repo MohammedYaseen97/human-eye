@@ -57,18 +57,20 @@ async def predict_attention(
     age: int = 25,
     task: str = "find settings",
     tech_saviness: int = 3,
+    platform: str = "desktop",
     debug: bool = False
 ):
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
         
-        # Make prediction without platform parameter
+        # Make prediction with platform parameter   
         async def generate():
             try:
                 for result in predictor.predict(
                     image=image,
                     age=age,
+                    platform=Platform(platform),
                     task=task,
                     tech_saviness=tech_saviness,
                     debug=debug

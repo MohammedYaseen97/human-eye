@@ -17,6 +17,7 @@ import asyncio
 import time
 import base64
 import io
+from models.ui_attention_predictor import Platform
 
 load_dotenv()
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -45,15 +46,12 @@ class UIPredictor:
         )
         
         
-    def predict(self, image: Image.Image, age: int, task: str, tech_saviness: int, debug: bool = False):
+    def predict(self, image: Image.Image, age: int, platform: Platform, task: str, tech_saviness: int, debug: bool = False):
         """
         Main prediction function that streams timesteps and handles failures
         """
         try:
             eye_pattern = self.eye_pattern_predictor.predict(age)
-            
-            platform = detect_platform(image)
-            time.sleep(1)
             
             # Initial parsing
             _, parsed_content_list = self.omniparser.parse(image)

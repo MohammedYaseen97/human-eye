@@ -12,6 +12,7 @@ export default function Home() {
     age: 25,
     task: 'find settings',
     techSaviness: 3,
+    platform: 'desktop' as 'desktop' | 'ios' | 'android',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentRequest, setCurrentRequest] = useState<AbortController | null>(null);
@@ -50,6 +51,7 @@ export default function Home() {
       formData.append('age', params.age.toString());
       formData.append('task', params.task);
       formData.append('tech_saviness', params.techSaviness.toString());
+      formData.append('platform', params.platform);
 
       // Default to localhost if env var is not set
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -179,6 +181,20 @@ export default function Home() {
                   className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., find settings"
                 />
+              </div>
+
+              {/* Platform Selection */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Platform</label>
+                <select
+                  value={params.platform}
+                  onChange={(e) => setParams({ ...params, platform: e.target.value as 'desktop' | 'ios' | 'android' })}
+                  className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="desktop">Desktop</option>
+                  <option value="ios">iOS</option>
+                  <option value="android">Android</option>
+                </select>
               </div>
 
               {/* Age and Tech Savviness in a row */}

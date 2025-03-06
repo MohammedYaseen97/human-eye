@@ -360,12 +360,12 @@ def display_image(image: Image.Image, jup=True):
     plt.show(block=True)  # This will block until the window is closed
     plt.close()  # Explicitly close the figure
 
-def detect_platform(image_path: str) -> str:
+def detect_platform(image: Image.Image) -> str:
     """
     Detect the platform (Desktop/iOS/Android) from an image using vLLM hosted model
     
     Args:
-        image_path: Path to the image file
+        image: PIL Image
     
     Returns:
         str: Detected platform
@@ -377,12 +377,11 @@ def detect_platform(image_path: str) -> str:
     )
 
     # Encode image to base64
-    with Image.open(image_path) as img:
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-        buffered = io.BytesIO()
-        img.save(buffered, format="JPEG")
-        image_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    buffered = io.BytesIO()
+    image.save(buffered, format="JPEG")
+    image_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
 
     # Prepare the prompt
     prompt = """Analyze this UI screenshot and determine if it's from Desktop, iOS, or Android. 
