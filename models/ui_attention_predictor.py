@@ -3,6 +3,7 @@ from typing import List, Dict, Tuple, Optional
 import numpy as np
 from enum import Enum
 from PIL import Image
+import time
 import cv2  # For color space conversion
 
 
@@ -898,7 +899,18 @@ class UIAttentionPredictor:
             processed_ids.add(point_id)
             merged_points.append(merged_point)
         
-        return sorted(merged_points, key=lambda x: x["score"], reverse=True)
+        # Sort by score
+        merged_points = sorted(merged_points, key=lambda x: x["score"], reverse=True)
+        
+        # Assert no duplicate element_ids (excluding None values)
+        element_ids = [p["element_id"] for p in merged_points if p["element_id"] is not None]
+        assert len(element_ids) == len(set(element_ids)), "Duplicate element_ids found in merged points"
+        
+        # Assert no duplicate positions
+        positions = [p["position"] for p in merged_points]
+        assert len(positions) == len(set(map(tuple, positions))), "Duplicate positions found in merged points"
+        
+        return merged_points
 
 
 # Example usage:

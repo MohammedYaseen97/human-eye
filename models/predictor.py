@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 from models.ui_attention_predictor import Platform, UIAttentionPredictor
 from models.eye_pattern import EyePatternPredictor
-from models.utils import evaluate_cropped_icon, draw_attention, find_next_element_scan, display_image, detect_platform
+from models.utils import evaluate_cropped_icon, draw_attention, find_next_element_scan, display_image
 from models.op_utils.omniparser import Omniparser
 
 from sentence_transformers import SentenceTransformer
@@ -125,6 +125,7 @@ class UIPredictor:
         print(json.dumps(result["attention_distribution"], indent=4))
 
         elements_ref = result["attention_distribution"].copy()
+        assert all(elements_ref[i]["element_id"] != elements_ref[i+1]["element_id"] for i in range(len(elements_ref)-1))
         len_elements_ref = len(elements_ref)
         elements = elements_ref.copy()
         last_element = None
@@ -140,7 +141,7 @@ class UIPredictor:
             curr_window = elements[:5]
             
             scores = np.array([point["score"] for point in curr_window])
-            exp_scores = np.exp(scores - np.max(scores))  # Softmax and ubtract max for numerical stability
+            exp_scores = np.exp(scores - np.max(scores))  # Softmax and subtract max for numerical stability
             confidences = exp_scores / exp_scores.sum()    
             
             print(f"confidences: {[f'{conf:.2f}' for conf in confidences]}")
@@ -157,20 +158,19 @@ class UIPredictor:
                     scan = True
                     scan_pattern = eye_pattern.lower()
                     last_element = None
-                    continue
+                    continue  # Skip the rest of the loop and start scanning
                 
                 print("guessing next element..")
                 if last_element:
                     elements.remove(last_element)
                 element = elements[0]
-                
+            
             if not element:
                 print("no element found..")
                 break
             
-            
+            # Only visualize and append element if we're confident or in scanning mode
             highlighted_image, color = draw_attention(element, last_image, timestep_count, len_elements_ref)
-            
             highlighted_element = {**element, "color": color, "scan_pattern": scan_pattern}
             print(f"\nhighlighted element: {json.dumps(highlighted_element, indent=4)}")
             visual_elements.append(highlighted_element)

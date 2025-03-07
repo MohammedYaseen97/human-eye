@@ -6,6 +6,8 @@ from models.ui_attention_predictor import Platform
 import matplotlib.pyplot as plt
 import io
 import base64
+import traceback
+import json
 from openai import OpenAI
 
 cos = nn.CosineSimilarity(dim=0, eps=1e-8)
@@ -42,48 +44,13 @@ def validate_inputs(age: int, platform: str, task: str, tech_saviness: int) -> b
         return True
     except:
         return False
-
-def caption_single_image(image, model, processor, prompt="List the UI elements in this image in less than 10 words."):
-    if not prompt:
-        if 'florence' in model.config.name_or_path:
-            prompt = "<CAPTION>"
-        else:
-            prompt = "The image shows"
     
-    device = model.device
-    
-    # Process single image
-    if model.device.type == 'cuda':
-        inputs = processor(images=image, text=prompt, return_tensors="pt", do_resize=False).to(device=device, dtype=torch.float16)
-    else:
-        inputs = processor(images=image, text=prompt, return_tensors="pt").to(device=device)
-    
-    if 'florence' in model.config.name_or_path:
-        generated_ids = model.generate(
-            input_ids=inputs["input_ids"],
-            pixel_values=inputs["pixel_values"],
-            max_new_tokens=20,
-            num_beams=1,
-            do_sample=False
-        )
-    else:
-        generated_ids = model.generate(
-            **inputs,
-            max_length=100,
-            num_beams=5,
-            no_repeat_ngram_size=2,
-            early_stopping=True,
-            num_return_sequences=1
-        )
-    
-    caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
-    return caption
 
 def evaluate_cropped_icon(model, processor, embed_model, cropped_icon, task_description, threshold=0.4):
-    cropped_icon = cropped_icon.convert('RGB')
-    cropped_icon.resize((64, 64), resample=Image.Resampling.LANCZOS)
+    # cropped_icon = cropped_icon.convert('RGB')
+    # cropped_icon.resize((64, 64), resample=Image.Resampling.LANCZOS)
     
-    caption = caption_single_image(cropped_icon, model, processor)
+    caption = chat_vllm(cropped_icon, "What are the UI elements in this image and what are they used for ? Answer in one sentence.")
     
     embeddings = embed_model.encode([caption, task_description], convert_to_tensor=True)
     print(f"caption: {caption}, task_description: {task_description}")
@@ -395,22 +362,7 @@ def display_image(image: Image.Image, jup=True):
     plt.show(block=True)  # This will block until the window is closed
     plt.close()  # Explicitly close the figure
 
-def detect_platform(image: Image.Image) -> str:
-    """
-    Detect the platform (Desktop/iOS/Android) from an image using vLLM hosted model
-    
-    Args:
-        image: PIL Image
-    
-    Returns:
-        str: Detected platform
-    """
-    # Initialize OpenAI client pointing to local vLLM server
-    client = OpenAI(
-        base_url="http://localhost:6969/v1",  # Adjust port if needed
-        api_key="dummy-key"  # vLLM doesn't check API keys
-    )
-
+def chat_vllm(image: Image.Image, prompt: str, base_url="https://uitars.wisit.io", api_key: str="dummy-key", model_name: str="bytedance-research/UI-TARS-2B-SFT") -> str:
     # Encode image to base64
     if image.mode != 'RGB':
         image = image.convert('RGB')
@@ -418,13 +370,14 @@ def detect_platform(image: Image.Image) -> str:
     image.save(buffered, format="JPEG")
     image_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
 
-    # Prepare the prompt
-    prompt = """Analyze this UI screenshot and determine if it's from Desktop, iOS, or Android. 
-    Only respond with one word: 'DESKTOP', 'IOS', or 'ANDROID'. Nothing else."""
-
     try:
+        client = OpenAI(
+            base_url=base_url,
+            api_key=api_key
+        )
+        
         response = client.chat.completions.create(
-            model="your-model-name",  # Replace with your actual model name
+            model=model_name,
             messages=[
                 {
                     "role": "user",
@@ -446,14 +399,16 @@ def detect_platform(image: Image.Image) -> str:
             temperature=0
         )
         
-        platform = response.choices[0].message.content.strip().upper()
-        
-        # Validate response
-        if platform not in ['DESKTOP', 'IOS', 'ANDROID']:
-            raise ValueError(f"Invalid platform detection: {platform}")
+        if response.status != 200:
+            print("\nFull API Request Details:")
+            print("URL:", f"{base_url}/v1/chat/completions")
+            print("Auth:", f"Bearer {api_key}")
+            print("Messages:", json.dumps(response.request.json, indent=2))
+            print("\nResponse Status:", response.status)
+            print("Response Body:", response.text)
+            raise Exception(f"API request failed with status {response.status}: {response.text}")
             
-        return platform.lower()
-
+        return response.choices[0].message.content
     except Exception as e:
-        print(f"Error detecting platform: {str(e)}")
-        raise
+        print(f"Error in chat_vllm, traceback: {traceback.format_exc()}")
+        return ""
