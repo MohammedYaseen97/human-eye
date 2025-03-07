@@ -47,12 +47,11 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setStreamImage(null);
+    setAttentionPoints([]); // Reset attention points at start
 
     try {
       // Prepare form data
       const formData = new FormData();
-      // Ensure image exists (TypeScript check)
-      if (!image) return;
       const imageBlob = await fetch(image).then(r => r.blob());
       formData.append('file', imageBlob, 'image.png');
       formData.append('age', params.age.toString());
@@ -81,12 +80,13 @@ export default function Home() {
 
       // Parse and handle the result
       const result = await response.json();
+      
+      // Update both image and attention points
       if (result.timestep) {
         setStreamImage(result.timestep);
       }
-
-      // Update attention points from the response
-      if (result && result.elements) {
+      if (result.elements) {
+        console.log("Updating attention points:", result.elements); // Debug log
         setAttentionPoints(result.elements);
       }
 
