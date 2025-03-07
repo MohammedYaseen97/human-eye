@@ -33,28 +33,17 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
 
   // Helper function to get score color based on value
   const getScoreColor = (score: number) => {
-    if (score >= 0.7) return 'text-green-500';
-    if (score >= 0.4) return 'text-yellow-500';
-    return 'text-red-500';
+    if (score >= 0.7) return 'text-emerald-400';
+    if (score >= 0.4) return 'text-amber-400';
+    return 'text-rose-400';
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4 max-h-[600px] overflow-hidden flex flex-col">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">Attention Points Analysis</h2>
-      
-      {/* Stats Summary */}
-      <div className="mb-4 grid grid-cols-2 gap-4">
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <p className="text-sm text-gray-600">UI Elements</p>
-          <p className="text-lg font-semibold">
-            {points.filter(p => p.candidate_type === 'ui_element').length}
-          </p>
-        </div>
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <p className="text-sm text-gray-600">Platform Hotspots</p>
-          <p className="text-lg font-semibold">
-            {points.filter(p => p.candidate_type === 'platform_hotspot').length}
-          </p>
+    <div className="bg-gray-800 rounded-xl shadow-xl p-4 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-white">Attention Analysis</h2>
+        <div className="text-sm text-gray-400">
+          {points.length} points detected
         </div>
       </div>
 
@@ -65,8 +54,8 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
             key={point.element_id || index}
             className={`mb-3 p-4 rounded-lg transition-all cursor-pointer ${
               selectedPoint?.element_id === point.element_id
-                ? 'bg-blue-50 border-2 border-blue-200'
-                : 'bg-gray-50 hover:bg-gray-100'
+                ? 'bg-blue-500/20 border border-blue-400'
+                : 'bg-gray-700/50 hover:bg-gray-700 border border-gray-600'
             }`}
             onMouseEnter={() => onPointHover?.(point)}
             onMouseLeave={() => onPointHover?.(null)}
@@ -77,10 +66,10 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
               <div className="flex items-center">
                 <span className={`w-2 h-2 rounded-full mr-2 ${
                   point.candidate_type === 'ui_element' 
-                    ? 'bg-purple-500' 
-                    : 'bg-green-500'
+                    ? 'bg-purple-400' 
+                    : 'bg-emerald-400'
                 }`} />
-                <span className="font-medium text-gray-800">
+                <span className="font-medium text-white">
                   {point.candidate_type === 'ui_element' ? 'UI Element' : 'Platform Hotspot'}
                 </span>
               </div>
@@ -90,26 +79,26 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
             </div>
 
             {/* Position */}
-            <div className="text-sm text-gray-600 mb-2">
+            <div className="text-sm text-gray-300 mb-2">
               Position: ({point.position[0].toFixed(2)}, {point.position[1].toFixed(2)})
             </div>
 
             {/* Component Scores */}
             <div className="grid grid-cols-3 gap-2 mb-2">
               <div className="text-center">
-                <div className="text-xs text-gray-500">Position</div>
+                <div className="text-xs text-gray-400">Position</div>
                 <div className={`text-sm font-medium ${getScoreColor(point.component_scores.position)}`}>
                   {formatScore(point.component_scores.position)}
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-xs text-gray-500">Task</div>
+                <div className="text-xs text-gray-400">Task</div>
                 <div className={`text-sm font-medium ${getScoreColor(point.component_scores.task)}`}>
                   {formatScore(point.component_scores.task)}
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-xs text-gray-500">Visual</div>
+                <div className="text-xs text-gray-400">Visual</div>
                 <div className={`text-sm font-medium ${getScoreColor(point.component_scores.visual)}`}>
                   {formatScore(point.component_scores.visual)}
                 </div>
@@ -117,7 +106,7 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
             </div>
 
             {/* Reasoning */}
-            <div className="text-sm text-gray-600 bg-white p-2 rounded">
+            <div className="text-sm text-gray-300 bg-gray-800/50 p-2 rounded border border-gray-600">
               {point.reasoning}
             </div>
           </div>

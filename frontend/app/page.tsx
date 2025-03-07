@@ -114,12 +114,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
           UI Attention Predictor
         </h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Input */}
           <div className="space-y-6 bg-gray-800 p-6 rounded-xl shadow-xl">
             {/* Image Upload */}
@@ -233,7 +233,7 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Right Column - Output */}
+          {/* Middle Column - Output Visualization */}
           <div className="space-y-6 bg-gray-800 p-6 rounded-xl shadow-xl">
             <h2 className="text-xl font-semibold mb-4">Attention Visualization</h2>
             <div className="aspect-square relative bg-gray-700 rounded-lg overflow-hidden">
@@ -260,19 +260,19 @@ export default function Home() {
                 {error}
               </div>
             )}
+          </div>
 
-            {/* Attention Points Analysis */}
+          {/* Right Column - Attention Points Analysis */}
+          <div className="h-full">
             {attentionPoints.length > 0 && (
               <AttentionPoints
                 points={attentionPoints}
                 selectedPoint={selectedPoint}
                 onPointHover={(point) => {
                   setSelectedPoint(point);
-                  // You can add additional hover effects on the image here
                 }}
                 onPointClick={(point) => {
                   setSelectedPoint(point);
-                  // You can add additional click actions here
                 }}
               />
             )}
