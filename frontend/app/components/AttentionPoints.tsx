@@ -78,12 +78,10 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
               {/* Point Header */}
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center">
-                  {point.color && (
-                    <span 
-                      className="w-2 h-2 rounded-full mr-1"
-                      style={{ backgroundColor: point.color }}
-                    />
-                  )}
+                  <div 
+                    className="w-2 h-2 rounded-full mr-1"
+                    style={{ backgroundColor: point.color || 'transparent' }}
+                  />
                   <span className={`w-2 h-2 rounded-full mr-2 ${
                     point.candidate_type === 'ui_element' 
                       ? 'bg-purple-400' 
