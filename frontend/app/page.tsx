@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import AttentionPoints from './components/AttentionPoints';
+import type { AttentionPoint } from './components/AttentionPoints';
 
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
@@ -17,8 +18,8 @@ export default function Home() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentRequest, setCurrentRequest] = useState<AbortController | null>(null);
-  const [attentionPoints, setAttentionPoints] = useState<any[]>([]);
-  const [selectedPoint, setSelectedPoint] = useState<any>(null);
+  const [attentionPoints, setAttentionPoints] = useState<AttentionPoint[]>([]);
+  const [selectedPoint, setSelectedPoint] = useState<AttentionPoint | null>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -6,7 +6,7 @@ interface ComponentScore {
   visual: number;
 }
 
-interface AttentionPoint {
+export interface AttentionPoint {
   element_id: string;
   position: [number, number];
   candidate_type: 'ui_element' | 'platform_hotspot';
