@@ -31,7 +31,7 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
   selectedPoint
 }) => {
   // Helper function to format score as percentage
-  const formatScore = (score: number) => `${(score * 100).toFixed(1)}%`;
+  const formatScore = (score: number) => score.toFixed(3);
 
   // Helper function to get score color based on value
   const getScoreColor = (score: number) => {
