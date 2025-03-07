@@ -13,6 +13,8 @@ export interface AttentionPoint {
   score: number;
   component_scores: ComponentScore;
   reasoning: string;
+  color?: string;
+  scan_pattern?: string;
 }
 
 interface AttentionPointsProps {
@@ -76,6 +78,12 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
               {/* Point Header */}
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center">
+                  {point.color && (
+                    <span 
+                      className="w-2 h-2 rounded-full mr-1"
+                      style={{ backgroundColor: point.color }}
+                    />
+                  )}
                   <span className={`w-2 h-2 rounded-full mr-2 ${
                     point.candidate_type === 'ui_element' 
                       ? 'bg-purple-400' 
@@ -89,6 +97,12 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
                   {formatScore(point.score)}
                 </span>
               </div>
+
+              {point.scan_pattern && (
+                <div className="text-xs text-gray-300 mb-1.5 italic">
+                  Scan Pattern: {point.scan_pattern}
+                </div>
+              )}
 
               {/* Position and Scores in one row */}
               <div className="grid grid-cols-4 gap-2 mb-1.5 text-xs">

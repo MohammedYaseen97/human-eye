@@ -134,7 +134,7 @@ class UIPredictor:
         last_image = image
         
         timestep_count = 0  # Add a counter to track timesteps
-        encountered_elements = []
+        visual_elements = []
         while elements:
             print("#########################")
             curr_window = elements[:5]
@@ -168,14 +168,12 @@ class UIPredictor:
                 print("no element found..")
                 break
             
-            print(f"\nhighlighted element: {json.dumps(element, indent=4)}")
-            encountered_elements.append({**element, "color": color, "scan_pattern": scan_pattern})
             
-            # Calculate opacity - earlier timesteps will be more opaque
-            opacity = max(0.2, 0.9 * (1 - (timestep_count * 00.1)))  # Starts at 0.9, decreases by 0.09 each step, min 0.2
-            
-            print(f"Drawing attention with opacity: {opacity}")
             highlighted_image, color = draw_attention(element, last_image, timestep_count, len_elements_ref)
+            
+            highlighted_element = {**element, "color": color, "scan_pattern": scan_pattern}
+            print(f"\nhighlighted element: {json.dumps(highlighted_element, indent=4)}")
+            visual_elements.append(highlighted_element)
             
             timestep_count += 1  # Increment counter
             
@@ -234,7 +232,7 @@ class UIPredictor:
                 print("task completed, element found..")
                 yield {
                     "status": "success",
-                    "elements": encountered_elements,
+                    "elements": visual_elements,
                     "timestep": image_to_base64(highlighted_image)
                 }
                 break
@@ -246,10 +244,9 @@ class UIPredictor:
             # Convert the image to base64 before yielding
             yield {
                 "status": "success",
-                "elements": encountered_elements,
+                "elements": visual_elements,
                 "timestep": image_to_base64(highlighted_image)
             }
-
 
 
 if __name__ == "__main__":
