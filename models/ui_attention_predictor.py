@@ -664,7 +664,7 @@ class UIAttentionPredictor:
         
         # Add confidence to top points
         for point, score in zip(top_points, scores):
-            point["scores"] = float(score)
+            point["score"] = float(score)
             point["reasoning"] = self._generate_reasoning_v2(
                 next(c for c in merged_candidates if c.position == point["position"]),
                 point["component_scores"]["position"],
@@ -773,7 +773,7 @@ class UIAttentionPredictor:
         # Get the top attention points (these already have normalized confidence scores)
         points = [attention_result["primary_focus"]] + attention_result["secondary_focuses"]
         points = points[:top_k]
-        scores = np.array([point["scores"] for point in points])
+        scores = np.array([point["score"] for point in points])
         
         # Apply softmax to get confidence distribution
         exp_scores = np.exp(scores - np.max(scores))  # Subtract max for numerical stability
@@ -833,7 +833,7 @@ class UIAttentionPredictor:
         for score combination.
         """
         def sort_key(point):
-            return (point["candidate_type"] == "ui_element", point["scores"])
+            return (point["candidate_type"] == "ui_element", point["score"])
         
         sorted_points = sorted(attention_points, key=sort_key, reverse=True)
         merged_points = []
@@ -848,7 +848,7 @@ class UIAttentionPredictor:
             
             # Get current point position
             x1, y1 = point["position"]
-            base_score = point["scores"]
+            base_score = point["score"]
             
             # Find all close points and their distances
             nearby_points = []
@@ -870,7 +870,7 @@ class UIAttentionPredictor:
             # Calculate merged score with diminishing returns
             if close_points:
                 # Sort all scores (including base_score) in descending order
-                all_scores = sorted([base_score] + [p[1]["scores"] for p in close_points], reverse=True)
+                all_scores = sorted([base_score] + [p[1]["score"] for p in close_points], reverse=True)
                 merged_score = all_scores[0]  # Start with highest score
                 
                 # Add diminishing contributions from other scores
@@ -888,7 +888,7 @@ class UIAttentionPredictor:
             
             # Create merged point
             merged_point = point.copy()
-            merged_point["scores"] = merged_score
+            merged_point["score"] = merged_score
             
             # Update reasoning if points were merged
             if close_points:
@@ -898,7 +898,7 @@ class UIAttentionPredictor:
             processed_ids.add(point_id)
             merged_points.append(merged_point)
         
-        return sorted(merged_points, key=lambda x: x["scores"], reverse=True)
+        return sorted(merged_points, key=lambda x: x["score"], reverse=True)
 
 
 # Example usage:

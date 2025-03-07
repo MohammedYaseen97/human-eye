@@ -11,6 +11,7 @@ import json
 import traceback
 import matplotlib.pyplot as plt
 
+from dataclasses import dataclass
 import os
 from dotenv import load_dotenv
 import asyncio
@@ -21,6 +22,7 @@ from models.ui_attention_predictor import Platform
 
 load_dotenv()
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 class UIPredictor:
     def __init__(self):
@@ -107,6 +109,7 @@ class UIPredictor:
             }
             return
     
+    
     def _generate_timesteps(self, platform, image, task, eye_pattern, result, debug):
         """
         Internal method to generate timesteps
@@ -125,8 +128,9 @@ class UIPredictor:
         len_elements_ref = len(elements_ref)
         elements = elements_ref.copy()
         last_element = None
+        
         scan = False
-        delay = float(os.getenv('TIMESTEP_DELAY', 0.5))
+        scan_pattern = "confidence"
         last_image = image
         
         timestep_count = 0  # Add a counter to track timesteps
@@ -135,7 +139,7 @@ class UIPredictor:
             print("#########################")
             curr_window = elements[:5]
             
-            scores = np.array([point["scores"] for point in curr_window])
+            scores = np.array([point["score"] for point in curr_window])
             exp_scores = np.exp(scores - np.max(scores))  # Softmax and ubtract max for numerical stability
             confidences = exp_scores / exp_scores.sum()    
             
@@ -151,6 +155,7 @@ class UIPredictor:
                     print("elements_ref: ", len(elements_ref))
                     elements = elements_ref.copy()
                     scan = True
+                    scan_pattern = eye_pattern.lower()
                     last_element = None
                     continue
                 
@@ -164,13 +169,13 @@ class UIPredictor:
                 break
             
             print(f"\nhighlighted element: {json.dumps(element, indent=4)}")
-            encountered_elements.append(element)
+            encountered_elements.append({**element, "color": color, "scan_pattern": scan_pattern})
             
             # Calculate opacity - earlier timesteps will be more opaque
             opacity = max(0.2, 0.9 * (1 - (timestep_count * 00.1)))  # Starts at 0.9, decreases by 0.09 each step, min 0.2
             
             print(f"Drawing attention with opacity: {opacity}")
-            highlighted_image = draw_attention(element, last_image, timestep_count, len_elements_ref)
+            highlighted_image, color = draw_attention(element, last_image, timestep_count, len_elements_ref)
             
             timestep_count += 1  # Increment counter
             
@@ -227,10 +232,9 @@ class UIPredictor:
                 self.similarity_threshold
             ):
                 print("task completed, element found..")
-                time.sleep(delay)  # Keep consistent timing
                 yield {
                     "status": "success",
-                    "element": element,
+                    "elements": encountered_elements,
                     "timestep": image_to_base64(highlighted_image)
                 }
                 break
@@ -238,8 +242,6 @@ class UIPredictor:
             print("task not completed, element not found..")
             last_element = element
             last_image = highlighted_image
-            
-            time.sleep(delay)
             
             # Convert the image to base64 before yielding
             yield {

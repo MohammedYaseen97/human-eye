@@ -126,7 +126,7 @@ def get_color_for_timestep(timestep, max_timesteps):
     
     return (r, g, b, int(255 * 0.8))  # Keep alpha at 0.8
 
-def draw_attention(attention_point, ui_image, timestep_count, total_timesteps=100) -> Image:
+def draw_attention(attention_point, ui_image, timestep_count, total_timesteps=100) -> tuple[Image.Image, tuple[int, int, int, int]]:
     from PIL import Image, ImageDraw
         
     # Convert to RGBA if not already
@@ -163,7 +163,7 @@ def draw_attention(attention_point, ui_image, timestep_count, total_timesteps=10
     
     # Add this line to blend the overlay with the original image
     ui_image = Image.alpha_composite(ui_image, overlay)
-    return ui_image
+    return ui_image, color
 
 
 def create_spatial_grid(elements):

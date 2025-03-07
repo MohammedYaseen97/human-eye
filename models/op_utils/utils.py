@@ -370,7 +370,7 @@ def predict(model, image, caption, box_threshold, text_threshold):
         text_threshold=text_threshold, # 0.3,
         target_sizes=[image.size[::-1]]
     )[0]
-    boxes, logits, phrases = results["boxes"], results["scores"], results["labels"]
+    boxes, logits, phrases = results["boxes"], results["score"], results["labels"]
     return boxes, logits, phrases
 
 
