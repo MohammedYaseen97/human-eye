@@ -130,6 +130,7 @@ class UIPredictor:
         last_image = image
         
         timestep_count = 0  # Add a counter to track timesteps
+        encountered_elements = []
         while elements:
             print("#########################")
             curr_window = elements[:5]
@@ -163,6 +164,7 @@ class UIPredictor:
                 break
             
             print(f"\nhighlighted element: {json.dumps(element, indent=4)}")
+            encountered_elements.append(element)
             
             # Calculate opacity - earlier timesteps will be more opaque
             opacity = max(0.2, 0.9 * (1 - (timestep_count * 00.1)))  # Starts at 0.9, decreases by 0.09 each step, min 0.2
@@ -228,8 +230,8 @@ class UIPredictor:
                 time.sleep(delay)  # Keep consistent timing
                 yield {
                     "status": "success",
-                    "timestep": image_to_base64(highlighted_image),
-                    "final": True  # Optional: tell frontend this is the last frame
+                    "element": element,
+                    "timestep": image_to_base64(highlighted_image)
                 }
                 break
             
@@ -242,6 +244,7 @@ class UIPredictor:
             # Convert the image to base64 before yielding
             yield {
                 "status": "success",
+                "elements": encountered_elements,
                 "timestep": image_to_base64(highlighted_image)
             }
 

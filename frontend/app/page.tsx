@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import AttentionPoints from './components/AttentionPoints';
 
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
@@ -16,6 +17,8 @@ export default function Home() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentRequest, setCurrentRequest] = useState<AbortController | null>(null);
+  const [attentionPoints, setAttentionPoints] = useState<any[]>([]);
+  const [selectedPoint, setSelectedPoint] = useState<any>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,6 +82,11 @@ export default function Home() {
       const result = await response.json();
       if (result.timestep) {
         setStreamImage(result.timestep);
+      }
+
+      // Update attention points from the response
+      if (result && result.elements) {
+        setAttentionPoints(result.elements);
       }
 
     } catch (err) {
@@ -250,6 +258,22 @@ export default function Home() {
               <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded-lg">
                 {error}
               </div>
+            )}
+
+            {/* Attention Points Analysis */}
+            {attentionPoints.length > 0 && (
+              <AttentionPoints
+                points={attentionPoints}
+                selectedPoint={selectedPoint}
+                onPointHover={(point) => {
+                  setSelectedPoint(point);
+                  // You can add additional hover effects on the image here
+                }}
+                onPointClick={(point) => {
+                  setSelectedPoint(point);
+                  // You can add additional click actions here
+                }}
+              />
             )}
           </div>
         </div>
