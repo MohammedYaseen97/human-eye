@@ -39,7 +39,7 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
   };
 
   return (
-    <div className="bg-gray-800 rounded-xl shadow-xl p-4 h-[calc(100vh-8rem)] flex flex-col">
+    <div className="h-full p-4 flex flex-col">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-xl font-semibold text-white">Attention Analysis</h2>
         <div className="text-sm text-gray-400">

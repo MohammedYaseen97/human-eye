@@ -263,19 +263,17 @@ export default function Home() {
           </div>
 
           {/* Right Column - Attention Points Analysis */}
-          <div className="h-full">
-            {attentionPoints.length > 0 && (
-              <AttentionPoints
-                points={attentionPoints}
-                selectedPoint={selectedPoint}
-                onPointHover={(point) => {
-                  setSelectedPoint(point);
-                }}
-                onPointClick={(point) => {
-                  setSelectedPoint(point);
-                }}
-              />
-            )}
+          <div className="bg-gray-800 rounded-xl shadow-xl">
+            <AttentionPoints
+              points={attentionPoints}
+              selectedPoint={selectedPoint}
+              onPointHover={(point) => {
+                setSelectedPoint(point);
+              }}
+              onPointClick={(point) => {
+                setSelectedPoint(point);
+              }}
+            />
           </div>
         </div>
       </div>
