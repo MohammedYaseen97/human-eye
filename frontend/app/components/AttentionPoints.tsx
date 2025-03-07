@@ -41,7 +41,7 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
   };
 
   return (
-    <div className="h-full p-4 flex flex-col">
+    <div className="h-[calc(100vh-8rem)] p-4 flex flex-col">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-xl font-semibold text-white">Attention Analysis</h2>
         <div className="text-sm text-gray-400">
@@ -50,7 +50,7 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
       </div>
 
       {/* Points List */}
-      <div className="overflow-y-auto flex-grow scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+      <div className="overflow-y-auto flex-grow scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 pr-2">
         {points.length === 0 ? (
           <div className="h-full flex items-center justify-center text-gray-400 text-center p-4">
             <div>
@@ -80,7 +80,10 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
                 <div className="flex items-center">
                   <div 
                     className="w-2 h-2 rounded-full mr-1"
-                    style={{ backgroundColor: point.color || 'transparent' }}
+                    style={{ 
+                      backgroundColor: point.color ? `rgba(${point.color})` : 'transparent',
+                      border: '1px solid rgba(255,255,255,0.2)'
+                    }}
                   />
                   <span className={`w-2 h-2 rounded-full mr-2 ${
                     point.candidate_type === 'ui_element' 
