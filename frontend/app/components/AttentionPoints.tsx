@@ -78,18 +78,14 @@ const AttentionPoints: React.FC<AttentionPointsProps> = ({
               {/* Point Header */}
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center">
+                  {/* Color indicator matching the visualization */}
                   <div 
-                    className="w-2 h-2 rounded-full mr-1"
+                    className="w-4 h-4 rounded mr-2 flex-shrink-0"
                     style={{ 
                       backgroundColor: point.color ? `rgba(${point.color})` : 'transparent',
                       border: '1px solid rgba(255,255,255,0.2)'
                     }}
                   />
-                  <span className={`w-2 h-2 rounded-full mr-2 ${
-                    point.candidate_type === 'ui_element' 
-                      ? 'bg-purple-400' 
-                      : 'bg-emerald-400'
-                  }`} />
                   <span className="font-medium text-white text-sm">
                     {point.candidate_type === 'ui_element' ? 'UI Element' : 'Platform Hotspot'}
                   </span>
